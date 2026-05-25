@@ -1,0 +1,4 @@
+node_modules/
+.venv/
+dashboard-screenshot.png
+.env

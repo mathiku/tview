@@ -1,0 +1,16 @@
+{
+  "name": "tview",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "capture": "node scripts/capture-dashboard.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.52.0"
+  }
+}

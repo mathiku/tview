@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LONG Overview · Stock Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>LONG Position Overview</h1>
+      <p class="subtitle">Price vs 6 SMAs across daily, weekly &amp; monthly timeframes</p>
+    </div>
+    <div class="meta">
+      <nav class="top-nav">
+        <a href="/" class="nav-link active">Overview</a>
+        <a href="/stock" class="nav-link">Charts</a>
+      </nav>
+      <span id="last-updated">Loading…</span>
+      <span id="refresh-status" class="badge">Connecting</span>
+    </div>
+  </header>
+
+  <main class="overview-main">
+    <section class="panel overview-panel">
+      <div class="panel-head">
+        <h2>All Stocks · SMA Comparison</h2>
+        <span class="hint">Green = above SMA · ↓ = dip (closer than usual or below)</span>
+      </div>
+      <div class="table-wrap overview-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>Stock</th>
+              <th>Price</th>
+              <th>D · 100</th>
+              <th>D · 200</th>
+              <th>W · 100</th>
+              <th>W · 200</th>
+              <th>M · 100</th>
+              <th>M · 200</th>
+              <th>Bull</th>
+              <th>Dip</th>
+              <th>Total</th>
+              <th>Signal</th>
+            </tr>
+          </thead>
+          <tbody id="overview-body">
+            <tr><td colspan="12" class="loading">Loading all stocks…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="legend-panel">
+      <h3>Scoring logic</h3>
+      <p><strong>Bull (0–6)</strong> — price above each SMA. Confirms bullish trend.</p>
+      <p><strong>Dip (0–6)</strong> — price is below an SMA, or closer to it than usual vs recent history. Flags a potential buy-the-dip entry.</p>
+      <p><strong>Total</strong> — Bull + Dip. Best setups: high bull <em>and</em> high dip (strong trend + pullback).</p>
+      <ul>
+        <li><span class="signal-pill buy">Strong BUY</span> — bull ≥ 5 and dip ≥ 3</li>
+        <li><span class="signal-pill long-dip">LONG · Dip</span> — above all SMAs + dip forming</li>
+        <li><span class="signal-pill strong">Strong LONG</span> — above all SMAs</li>
+        <li><span class="signal-pill dip-buy">Dip BUY</span> — bull ≥ 4 and dip ≥ 3</li>
+        <li><span class="signal-pill long">LONG</span> — bull ≥ 5</li>
+        <li><span class="signal-pill lean">Lean LONG</span> — above at least half</li>
+        <li><span class="signal-pill avoid">Avoid LONG</span> — above 0–1 SMAs</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/overview.js"></script>
+</body>
+</html>
