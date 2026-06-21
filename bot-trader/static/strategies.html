@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bot Trader — Strategies & Results</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <nav class="top-nav">
+          <a class="nav-link" href="/">Live bot</a>
+          <a class="nav-link active" href="/strategies">Strategies & results</a>
+          <a class="nav-link" href="http://127.0.0.1:5050" target="_blank">Pullback scanner</a>
+        </nav>
+        <h1>Strategies & Backtest Results</h1>
+        <p class="subtitle" id="report-subtitle">Historical validation of the bot's rules</p>
+      </div>
+      <div class="meta">
+        <span id="backtest-file"></span>
+        <span id="updated-at">Loading…</span>
+      </div>
+    </header>
+
+    <section class="stats" id="combined-stats"></section>
+
+    <div class="strategy-grid" id="strategy-cards"></div>
+
+    <div class="layout full">
+      <div class="panel">
+        <div class="panel-head"><span>Exit reasons (combined)</span></div>
+        <div class="panel-body" id="exit-bars"></div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="panel">
+        <div class="panel-head"><span>Top winners</span></div>
+        <div class="panel-body" id="winners-table"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span>Top losers</span></div>
+        <div class="panel-body" id="losers-table"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/static/strategies.js"></script>
+  </body>
+</html>

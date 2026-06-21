@@ -1,0 +1,19 @@
+[Unit]
+Description=Bot Trader web dashboard
+After=network-online.target bot-trader-paper.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/trading/bot-trader
+Environment=BIND_HOST=0.0.0.0
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=15
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

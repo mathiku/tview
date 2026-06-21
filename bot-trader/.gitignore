@@ -1,0 +1,5 @@
+node_modules/
+data/cache/
+paper/logs/
+paper/state.json
+results/

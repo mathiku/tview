@@ -1,0 +1,111 @@
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { addPinned, loadPinned, removePinned } from "./pinned.js";
+import {
+  DEFAULT_SYMBOL,
+  buildScanUniverse,
+  clearOverviewCache,
+  fetchSymbolMeta,
+  getOverview,
+  getPayload,
+  getStocksForPicker,
+  resolveSymbol,
+} from "./stocks.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+const PORT = 5050;
+
+app.use(express.json());
+app.use("/static", express.static(path.join(__dirname, "static")));
+
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "overview.html"));
+});
+
+app.get("/stock", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "stock.html"));
+});
+
+app.get("/watchlist", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "watchlist.html"));
+});
+
+app.get("/api/stocks", async (_req, res) => {
+  try {
+    res.json({
+      default: DEFAULT_SYMBOL,
+      stocks: await getStocksForPicker(),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/pinned", async (_req, res) => {
+  try {
+    res.json({ stocks: await loadPinned() });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.post("/api/pinned", async (req, res) => {
+  try {
+    const raw = String(req.body?.symbol ?? "").trim().toUpperCase();
+    if (!raw) {
+      res.status(400).json({ error: "Symbol is required" });
+      return;
+    }
+
+    const meta = await fetchSymbolMeta(raw);
+    const stocks = await addPinned(meta);
+    clearOverviewCache();
+    res.json({ stocks });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/pinned/:symbol", async (req, res) => {
+  try {
+    const stocks = await removePinned(req.params.symbol);
+    clearOverviewCache();
+    res.json({ stocks });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/overview", async (_req, res) => {
+  try {
+    res.json(await getOverview());
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/stock", async (req, res) => {
+  try {
+    const symbol = resolveSymbol(req.query.symbol);
+    res.json(await getPayload(symbol));
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, "127.0.0.1", async () => {
+  try {
+    await buildScanUniverse();
+  } catch (err) {
+    console.error("Failed to build initial scan universe:", err);
+  }
+  console.log(`Dashboard running at http://127.0.0.1:${PORT}`);
+});

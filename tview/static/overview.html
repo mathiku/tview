@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pullback Watch · Stock Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Pullback Watch</h1>
+      <p class="subtitle" id="scan-scope">Scanning large-cap US stocks for daily 100 SMA pullbacks</p>
+    </div>
+    <div class="meta">
+      <nav class="top-nav">
+        <a href="/" class="nav-link active">Overview</a>
+        <a href="/stock" class="nav-link">Charts</a>
+        <a href="/watchlist" class="nav-link">Watchlist</a>
+      </nav>
+      <span id="watch-count">Loading…</span>
+      <span id="last-updated">Loading…</span>
+      <span id="refresh-status" class="badge">Connecting</span>
+    </div>
+  </header>
+
+  <main class="overview-main">
+    <section class="panel overview-panel">
+      <div class="panel-head">
+        <h2>Pullback candidates</h2>
+        <span class="hint">Green = above SMA · pattern ✓ = hammer, 3↑1–2↓ streak, or volume confirm</span>
+      </div>
+      <div class="table-wrap overview-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>Stock</th>
+              <th>Price</th>
+              <th class="focus-col">D · 100</th>
+              <th>D · 200</th>
+              <th>W · 100</th>
+              <th>W · 200</th>
+              <th>M · 100</th>
+              <th>M · 200</th>
+              <th>SMAs+</th>
+              <th colspan="3" class="group-head">Pullback</th>
+              <th colspan="3" class="group-head pattern-head">Patterns</th>
+              <th>Recent high</th>
+              <th>Signal</th>
+            </tr>
+            <tr class="subhead">
+              <th colspan="9"></th>
+              <th title="W+M above 200 SMA or 5+/6 bull">Trend</th>
+              <th title="Daily within ±3% of 100 SMA">At 100</th>
+              <th title="Was ≥5% above daily 100 SMA in last ~4 weeks">Was high</th>
+              <th title="Hammer candle on latest bar">Hammer</th>
+              <th title="3 consecutive up days, then 1–2 down">3↑↓</th>
+              <th title="Light volume on pullback or heavy on hammer">Vol</th>
+              <th colspan="2"></th>
+            </tr>
+          </thead>
+          <tbody id="overview-body">
+            <tr><td colspan="17" class="loading">Loading all stocks…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="legend-panel">
+      <h3>How scanning works</h3>
+      <p><strong>★ Pinned</strong> stocks always appear in the overview (manage on the Watchlist page).</p>
+      <p><strong>Random large caps</strong> fill out the rest of today's scan (~55/day from a ~170-stock pool).</p>
+      <p>A <strong>watchlist entry</strong> needs all three pullback checks — uptrend intact, at the 100 SMA, and recently extended.</p>
+      <ul class="check-legend">
+        <li><span class="check ok">✓</span> <strong>Trend OK</strong> — weekly &amp; monthly above 200 SMA, or 5+/6 SMAs bullish</li>
+        <li><span class="check ok">✓</span> <strong>At 100</strong> — daily price within ±3% of the 100 SMA</li>
+        <li><span class="check ok">✓</span> <strong>Was high</strong> — was ≥5% above daily 100 SMA within the last ~4 weeks</li>
+      </ul>
+
+      <h3>Pattern confirms</h3>
+      <p>Extra daily-bar signals when a stock is at support. More ✓ = higher rank within the watchlist.</p>
+      <ul class="check-legend">
+        <li><span class="check ok">✓</span> <strong>Hammer</strong> — long lower wick, small body (rejection of lows)</li>
+        <li><span class="check ok">✓</span> <strong>3↑↓</strong> — 3 up days, then 1–2 down into the SMA</li>
+        <li><span class="check ok">✓</span> <strong>Vol</strong> — down-day volume lighter than the up leg, or above-average on a hammer</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="/static/overview.js"></script>
+</body>
+</html>

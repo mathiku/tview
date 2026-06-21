@@ -142,11 +142,11 @@ function renderStockPicker() {
       (stock) => `
         <button
           type="button"
-          class="stock-btn${stock.symbol === currentSymbol ? " active" : ""}"
+          class="stock-btn${stock.pinned ? " pinned" : ""}${stock.symbol === currentSymbol ? " active" : ""}"
           data-symbol="${stock.symbol}"
-          title="${stock.name}"
+          title="${stock.name}${stock.pinned ? " (pinned)" : ""}"
         >
-          ${stock.symbol}
+          ${stock.pinned ? "★ " : ""}${stock.symbol}
         </button>
       `
     )

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bot Trader — Live Paper</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <nav class="top-nav">
+          <a class="nav-link active" href="/">Live bot</a>
+          <a class="nav-link" href="/strategies">Strategies & results</a>
+          <a class="nav-link" href="http://127.0.0.1:5050" target="_blank">Pullback scanner</a>
+        </nav>
+        <h1>Bot Trader</h1>
+        <p class="subtitle">Paper-trading dashboard — long pullbacks & short rallies</p>
+      </div>
+      <div class="meta">
+        <span class="badge live" id="status-badge">Paper · live</span>
+        <span id="updated-at">Loading…</span>
+        <button class="btn" id="run-btn" type="button">Run cycle now</button>
+      </div>
+    </header>
+
+    <section class="stats" id="stats"></section>
+
+    <div class="layout">
+      <div class="panel span2">
+        <div class="panel-head">
+          <span>Equity curve</span>
+          <span id="equity-range"></span>
+        </div>
+        <div class="panel-body chart-wrap" id="equity-chart"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span>Open positions</span><span id="open-count">0</span></div>
+        <div class="panel-body" id="positions-table"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><span>Queued for next open</span><span id="pending-count">0</span></div>
+        <div class="panel-body" id="pending-table"></div>
+      </div>
+
+      <div class="panel span2">
+        <div class="panel-head"><span>Recent closed trades</span><span id="closed-count">0</span></div>
+        <div class="panel-body" id="closed-table"></div>
+      </div>
+
+      <div class="panel span2">
+        <div class="panel-head"><span>Activity log</span></div>
+        <div class="panel-body"><ul class="activity-list" id="activity"></ul></div>
+      </div>
+    </div>
+
+    <script type="module" src="/static/dashboard.js"></script>
+  </body>
+</html>

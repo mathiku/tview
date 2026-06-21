@@ -1,0 +1,22 @@
+[Unit]
+Description=Bot Trader paper-trading daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h/trading/bot-trader
+ExecStart=/usr/bin/node scripts/run-paper-daemon.mjs
+Restart=always
+RestartSec=30
+# Avoid burst-restart loops on persistent errors
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Journal logs: journalctl --user -u bot-trader-paper -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

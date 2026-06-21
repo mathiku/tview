@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Watchlist · Stock Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>My Watchlist</h1>
+      <p class="subtitle">Pinned stocks are always included in every scan</p>
+    </div>
+    <div class="meta">
+      <nav class="top-nav">
+        <a href="/" class="nav-link">Overview</a>
+        <a href="/stock" class="nav-link">Charts</a>
+        <a href="/watchlist" class="nav-link active">Watchlist</a>
+      </nav>
+      <span id="watchlist-count">Loading…</span>
+      <span id="refresh-status" class="badge">Connecting</span>
+    </div>
+  </header>
+
+  <main class="watchlist-main">
+    <section class="panel watchlist-panel">
+      <div class="panel-head">
+        <h2>Add a stock</h2>
+        <span class="hint">Any US ticker on Yahoo Finance — small caps welcome</span>
+      </div>
+      <form id="add-form" class="add-form">
+        <input
+          id="symbol-input"
+          type="text"
+          placeholder="e.g. AAPL, DUOL, RIVN"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="12"
+        />
+        <button type="submit">Pin to watchlist</button>
+      </form>
+      <p id="form-error" class="form-error" hidden></p>
+    </section>
+
+    <section class="panel watchlist-panel">
+      <div class="panel-head">
+        <h2>Pinned stocks</h2>
+        <span class="hint">Today's scan also includes ~55 random large caps</span>
+      </div>
+      <ul id="pinned-list" class="pinned-list">
+        <li class="loading">Loading…</li>
+      </ul>
+    </section>
+
+    <section class="legend-panel">
+      <h3>How scanning works</h3>
+      <p><strong>Pinned</strong> stocks appear in every overview run, no matter what.</p>
+      <p><strong>Random large caps</strong> — each day ~55 names are picked from a pool of ~170 big US companies. Same set all day, new set tomorrow.</p>
+      <p>Remove a pin anytime. Add anything you want to track closely.</p>
+    </section>
+  </main>
+
+  <script src="/static/watchlist.js"></script>
+</body>
+</html>
