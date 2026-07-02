@@ -9,10 +9,10 @@ const DEFAULT_RANGES = {
 };
 
 const TV = {
-  bg: "#ffffff",
-  text: "#131722",
-  grid: "#f0f3fa",
-  border: "#e0e3eb",
+  bg: "#000000",
+  text: "#d1d4dc",
+  grid: "#1c1f2b",
+  border: "#2a2e39",
   up: "#089981",
   down: "#F23645",
   ema10: "#089981",
@@ -281,7 +281,7 @@ async function selectStock(symbol) {
   await refresh();
 }
 
-async function refresh() {
+async function refresh(attempt = 0) {
   try {
     const res = await fetch(`/api/stock?symbol=${encodeURIComponent(currentSymbol)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -297,7 +297,15 @@ async function refresh() {
     setStatus("Live", "live");
   } catch (err) {
     console.error(err);
-    setStatus("Error", "error");
+    // A cold host (e.g. Render free tier waking up) can fail the first calls.
+    // Retry with backoff so the charts fill in instead of staying blank.
+    if (attempt < 5) {
+      setStatus("Waking up…");
+      setTimeout(() => refresh(attempt + 1), Math.min(1500 * 2 ** attempt, 15000));
+    } else {
+      setStatus("Error — retrying", "error");
+      setTimeout(() => refresh(0), 20000);
+    }
   }
 }
 
@@ -305,7 +313,7 @@ async function boot() {
   initCharts();
   await loadStocks();
   await refresh();
-  setInterval(refresh, REFRESH_MS);
+  setInterval(() => refresh(), REFRESH_MS);
 }
 
 boot();

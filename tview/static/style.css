@@ -210,7 +210,13 @@ body {
 }
 
 .chart-panel {
-  background: #ffffff;
+  background: #000000;
+}
+
+/* Hide the lightweight-charts attribution logo (bottom-right of each chart). */
+#tv-attr-logo,
+a#tv-attr-logo {
+  display: none !important;
 }
 
 .chart-panel .panel-head {
@@ -224,7 +230,14 @@ body {
 .chart {
   flex: 1;
   min-height: 0;
-  background: #ffffff;
+  background: #000000;
+}
+
+/* Single shared legend bar above the charts. */
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 1.25rem 0.25rem;
 }
 
 .table-panel .table-wrap {
@@ -331,6 +344,8 @@ th {
   font-size: 0.72rem;
   font-weight: 600;
   white-space: nowrap;
+  /* Uniform outline on every pill so they line up regardless of variant. */
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .sma-cell.is-dip {
@@ -446,7 +461,7 @@ th {
   color: #e8eaed;
 }
 
-.signal-pill.pullback { background: #1a3d2e; color: #86efac; border: 1px solid #34d399; }
+.signal-pill.pullback { background: #1a3d2e; color: #86efac; }
 .signal-pill.near-100 { background: #3a2f12; color: #fcd34d; }
 .signal-pill.trend-ok { background: #1a3328; color: var(--positive); }
 .signal-pill.extended { background: #243044; color: #b8d4ff; }
@@ -454,7 +469,7 @@ th {
 .signal-pill.weak { background: #3a1d1d; color: var(--negative); }
 
 .signal-pill.strong { background: #123524; color: #6ee7b7; }
-.signal-pill.buy { background: #1a3d2e; color: #86efac; border: 1px solid #34d399; }
+.signal-pill.buy { background: #1a3d2e; color: #86efac; }
 .signal-pill.long-dip { background: #1a3328; color: #a7f3d0; }
 .signal-pill.dip-buy { background: #3a2f12; color: #fcd34d; }
 .signal-pill.long { background: #1a3328; color: var(--positive); }
@@ -468,6 +483,33 @@ th {
   border-radius: 12px;
   padding: 1rem 1.1rem;
   align-self: start;
+}
+
+/* Collapsible "How scanning works" panel. */
+.legend-details > summary {
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.legend-details > summary::-webkit-details-marker {
+  display: none;
+}
+.legend-details > summary::before {
+  content: "▸";
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.legend-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.legend-details[open] > summary {
+  margin-bottom: 0.75rem;
 }
 
 .legend-panel h3 {
