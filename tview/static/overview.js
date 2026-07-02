@@ -187,9 +187,89 @@ function passesFilters(stock, f) {
   return true;
 }
 
+// Sort state lives inside the filters object so "Clear" wipes both at once.
+function getSort() {
+  return Store.getFilters().__sort || null;
+}
+function setSort(sort) {
+  const f = Store.getFilters();
+  if (sort) f.__sort = sort;
+  else delete f.__sort;
+  Store.setFilters(f);
+}
+
+function sortValue(stock, key) {
+  const c = stock.comparison;
+  const s = stock.signal;
+  switch (key) {
+    case "text": return stock.symbol;
+    case "price": return stock.price;
+    case "d100": return c["1d"].vs_sma100_pct;
+    case "d200": return c["1d"].vs_sma200_pct;
+    case "w100": return c["1wk"].vs_sma100_pct;
+    case "w200": return c["1wk"].vs_sma200_pct;
+    case "m100": return c["1mo"].vs_sma100_pct;
+    case "m200": return c["1mo"].vs_sma200_pct;
+    case "smas": return s.bull.above;
+    case "recentHigh": return s.maxRecentAbove100;
+    case "stop": return s.levels?.stop;
+    case "target": return s.levels?.target;
+    case "gain": return s.levels?.rewardPct;
+    case "signal": return s.score;
+    case "trendOk": return s.checks.trendOk ? 1 : 0;
+    case "at100Sma": return s.checks.at100Sma ? 1 : 0;
+    case "wasHigherRecently": return s.checks.wasHigherRecently ? 1 : 0;
+    case "hammer": return s.patterns?.hammer ? 1 : 0;
+    case "pullbackStreak": return s.patterns?.pullbackStreak ? 1 : 0;
+    case "volumeOk": return s.patterns?.volumeOk ? 1 : 0;
+    case "doubleBottom": return s.doubleBottom?.match ? 1 : 0;
+    default: return null;
+  }
+}
+
+function compareBy(a, b, key, dir) {
+  const va = sortValue(a, key);
+  const vb = sortValue(b, key);
+  const na = va == null || Number.isNaN(va);
+  const nb = vb == null || Number.isNaN(vb);
+  if (na && nb) return 0;
+  if (na) return 1; // nulls always last
+  if (nb) return -1;
+  const r = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+  return dir === "asc" ? r : -r;
+}
+
+function updateSortIndicators() {
+  const sort = getSort();
+  document.querySelectorAll(".th-label[data-sort]").forEach((el) => {
+    const active = sort && sort.key === el.dataset.sort;
+    el.classList.toggle("sort-active", active);
+    el.dataset.dir = active ? sort.dir : "";
+  });
+}
+
+function wireSort() {
+  document.querySelectorAll(".th-label[data-sort]").forEach((el) => {
+    el.classList.add("sortable");
+    el.addEventListener("click", () => {
+      const key = el.dataset.sort;
+      const cur = getSort();
+      let next;
+      if (!cur || cur.key !== key) next = { key, dir: "desc" };
+      else if (cur.dir === "desc") next = { key, dir: "asc" };
+      else next = null; // third click clears the sort
+      setSort(next);
+      render();
+    });
+  });
+}
+
 function render() {
   const f = Store.getFilters();
-  const rows = allStocks.filter((s) => passesFilters(s, f));
+  let rows = allStocks.filter((s) => passesFilters(s, f));
+  const sort = getSort();
+  if (sort) rows = rows.slice().sort((a, b) => compareBy(a, b, sort.key, sort.dir));
+  updateSortIndicators();
   document.getElementById("overview-body").innerHTML = rows.map(renderRow).join("");
   wireRows();
 
@@ -309,5 +389,6 @@ function wireFilters() {
 }
 
 wireFilters();
+wireSort();
 refresh();
 setInterval(refresh, REFRESH_MS);

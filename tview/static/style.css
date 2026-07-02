@@ -875,3 +875,23 @@ select.col-filter {
   -webkit-appearance: none;
   cursor: pointer;
 }
+
+/* Sortable column headers */
+.th-label.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.th-label.sortable:hover {
+  color: var(--text);
+}
+.th-label.sort-active {
+  color: var(--text);
+}
+.th-label[data-dir="desc"]::after {
+  content: " ▾";
+  color: var(--sma100);
+}
+.th-label[data-dir="asc"]::after {
+  content: " ▴";
+  color: var(--sma100);
+}
