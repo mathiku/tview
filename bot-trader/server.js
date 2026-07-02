@@ -1,7 +1,7 @@
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getDashboardPayload, getStrategiesPayload } from "./api/data.js";
+import { getDashboardPayload, getStrategiesPayload, getTradesPayload } from "./api/data.js";
 import { runPaperCycle } from "./paper/runner.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +20,10 @@ app.get("/strategies", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "strategies.html"));
 });
 
+app.get("/trades", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "trades.html"));
+});
+
 app.get("/api/dashboard", async (_req, res) => {
   try {
     res.json(await getDashboardPayload());
@@ -32,6 +36,21 @@ app.get("/api/dashboard", async (_req, res) => {
 app.get("/api/strategies", async (_req, res) => {
   try {
     res.json(await getStrategiesPayload());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/trades", async (req, res) => {
+  try {
+    res.json(
+      await getTradesPayload({
+        source: req.query.source ?? "backtest",
+        side: req.query.side ?? "all",
+        year: req.query.year ?? "all",
+      })
+    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -58,4 +77,5 @@ app.post("/api/run-cycle", async (req, res) => {
 app.listen(PORT, HOST, () => {
   console.log(`Bot dashboard at http://${HOST}:${PORT}`);
   console.log(`Strategy report at http://${HOST}:${PORT}/strategies`);
+  console.log(`All trades at http://${HOST}:${PORT}/trades`);
 });

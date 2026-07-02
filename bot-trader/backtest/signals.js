@@ -1,38 +1,46 @@
 import { buildComparison } from "../../tview/stocks.js";
 import { isHammer, isShootingStar } from "../../tview/patterns.js";
 import { evaluatePullback, evaluateRallyShort, withSmas } from "../../tview/stocks.js";
-import { BACKTEST, ENTRY } from "../config.js";
+import { atr } from "../../tview/indicators.js";
+import { ENTRY as DEFAULT_ENTRY, INDICATORS } from "../config.js";
 
-function passesEntryFilters(signal) {
+function entryOpts(entryCfg) {
+  return { filters: entryCfg.filters, indicatorCfg: INDICATORS };
+}
+
+function passesEntryFilters(signal, entryCfg) {
   if (!signal) return false;
-  if (ENTRY.requireWatch && !signal.watch) return false;
-  if (ENTRY.requirePattern) {
+  if (entryCfg.requireWatch && !signal.watch) return false;
+  if (entryCfg.requirePattern) {
     const count = signal.patterns?.count ?? 0;
-    if (count < ENTRY.minPatternCount) return false;
+    if (count < entryCfg.minPatternCount) return false;
   }
   return true;
 }
 
-export function shouldEnterLong(dailyRows) {
-  const signal = evaluatePullback(dailyRows);
-  if (!passesEntryFilters(signal)) return { enter: false, signal, side: "long" };
+export function shouldEnterLong(dailyRows, entryCfg = DEFAULT_ENTRY) {
+  const signal = evaluatePullback(dailyRows, entryOpts(entryCfg));
+  if (!passesEntryFilters(signal, entryCfg)) return { enter: false, signal, side: "long" };
   return { enter: true, signal, side: "long" };
 }
 
-export function shouldEnterShort(dailyRows) {
-  const signal = evaluateRallyShort(dailyRows);
-  if (!passesEntryFilters(signal)) return { enter: false, signal, side: "short" };
+export function shouldEnterShort(dailyRows, entryCfg = DEFAULT_ENTRY) {
+  const signal = evaluateRallyShort(dailyRows, entryOpts(entryCfg));
+  if (!passesEntryFilters(signal, entryCfg)) return { enter: false, signal, side: "short" };
   return { enter: true, signal, side: "short" };
 }
 
-export function scanEntries(dailyRows, { enableLongs = true, enableShorts = true } = {}) {
+export function scanEntries(
+  dailyRows,
+  { enableLongs = true, enableShorts = true, entryCfg = DEFAULT_ENTRY } = {}
+) {
   const candidates = [];
   if (enableLongs) {
-    const long = shouldEnterLong(dailyRows);
+    const long = shouldEnterLong(dailyRows, entryCfg);
     if (long.enter) candidates.push(long);
   }
   if (enableShorts) {
-    const short = shouldEnterShort(dailyRows);
+    const short = shouldEnterShort(dailyRows, entryCfg);
     if (short.enter) candidates.push(short);
   }
   return candidates;
@@ -75,6 +83,20 @@ export function shouldExit(
   const ep = exitCfg.earlyProfit;
 
   if (pnlPct <= -exitCfg.stopLossPct) return "stop_loss";
+
+  const as = exitCfg.atrStop;
+  if (as?.enabled && dailyRows != null && barIndex != null && entryPrice) {
+    const series = atr(dailyRows.slice(0, barIndex + 1), as.period ?? 14);
+    const a = series[series.length - 1];
+    if (a != null) {
+      const stopPct = ((as.stopMult * a) / entryPrice) * 100;
+      if (pnlPct <= -stopPct) return "atr_stop";
+      if (as.targetMult != null) {
+        const targetPct = ((as.targetMult * a) / entryPrice) * 100;
+        if (pnlPct >= targetPct) return "atr_target";
+      }
+    }
+  }
 
   if (exitCfg.stopOn200Sma && sma200 != null) {
     if (side === "long" && bar.close < sma200) return "below_200sma";

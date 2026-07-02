@@ -7,6 +7,9 @@
     "start": "node server.js",
     "capture": "node scripts/capture-dashboard.mjs"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "express": "^4.21.0"
   },

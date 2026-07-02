@@ -211,6 +211,40 @@ tr:last-child td { border-bottom: none; }
 .bar-fill { height: 100%; background: #4da3ff; border-radius: 4px; }
 .bar-fill.short { background: var(--short); }
 
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.filter-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: var(--muted);
+}
+
+.filter-row select {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+
+.table-scroll {
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.table-scroll table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 1;
+}
+
 @media (max-width: 900px) {
   .layout, .stats, .strategy-grid, .metrics-row { grid-template-columns: 1fr; }
   .panel.span2 { grid-column: span 1; }

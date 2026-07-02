@@ -7,6 +7,11 @@
   --price: #ffffff;
   --sma100: #4da3ff;
   --sma200: #ff5c5c;
+  --tv-up: #089981;
+  --tv-down: #f23645;
+  --tv-ema10: #089981;
+  --tv-sma100: #2962ff;
+  --tv-sma200: #f23645;
   --positive: #34d399;
   --negative: #f87171;
 }
@@ -20,7 +25,10 @@ body {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100dvh;
+  /* Charts page: flex column so .grid fills remaining height after header + picker */
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -136,7 +144,9 @@ body {
   grid-template-rows: repeat(2, minmax(320px, 1fr));
   gap: 0.75rem;
   padding: 0.75rem;
-  height: calc(100vh - 132px);
+  /* Fill whatever vertical space remains after header + stock-picker */
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .panel {
@@ -192,10 +202,29 @@ body {
 .dot.price::before { background: var(--price); }
 .dot.sma100::before { background: var(--sma100); }
 .dot.sma200::before { background: var(--sma200); }
+.dot.candle-up::before { background: var(--tv-up); }
+.dot.candle-down::before { background: var(--tv-down); }
+.dot.ema10::before { background: var(--tv-ema10); }
+.dot.vol::before {
+  background: linear-gradient(90deg, var(--tv-up) 50%, var(--tv-down) 50%);
+}
+
+.chart-panel {
+  background: #ffffff;
+}
+
+.chart-panel .panel-head {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.chart-panel .legend .dot.sma100::before { background: var(--tv-sma100); }
+.chart-panel .legend .dot.sma200::before { background: var(--tv-sma200); }
 
 .chart {
   flex: 1;
   min-height: 0;
+  background: #ffffff;
 }
 
 .table-panel .table-wrap {
@@ -253,6 +282,7 @@ th {
 
 .overview-wrap {
   padding: 0 1rem 1rem;
+  overflow-x: auto;
 }
 
 .overview-table {

@@ -2,6 +2,8 @@
 export const BACKTEST = {
   startDate: "2020-01-01",
   endDate: null,
+  /** Skip this many leading *trading rows* (not calendar days) before trading,
+   *  so SMA-200 and friends are warm. ~220 rows ≈ 10.5 months. */
   warmupDays: 220,
   initialCapital: 100_000,
   maxPositions: 5,
@@ -11,7 +13,27 @@ export const BACKTEST = {
   commissionPerTrade: 1.0,
   slippagePct: 0.05,
   enableLongs: true,
-  enableShorts: true,
+  enableShorts: false,
+
+  /** Optional broad-market regime gate (off by default). When enabled, longs
+   *  only fire while `symbol` is above its own SMA, shorts only while below.
+   *  Requires `symbol` to be present in the backtest universe. */
+  regimeFilter: {
+    enabled: false,
+    symbol: "SPY",
+    smaPeriod: 200,
+  },
+};
+
+/** Indicator periods shared by the scanner and backtest gates. */
+export const INDICATORS = {
+  rsiPeriod: 14,
+  atrPeriod: 14,
+  adxPeriod: 14,
+  bollingerPeriod: 20,
+  bollingerMult: 2,
+  emaPeriod: 21,
+  smaFast: 50,
 };
 
 export const ENTRY = {
@@ -19,30 +41,49 @@ export const ENTRY = {
   requirePattern: false,
   minPatternCount: 1,
   timing: "next_open",
+
+  /** Optional indicator gates. `null` = disabled (legacy behaviour). These add
+   *  to the existing watch/pattern rules — every non-null gate must pass. */
+  filters: {
+    rsiMax: null, // long: enter only if RSI(14) <= this (oversold dip)
+    rsiMinShort: null, // short: enter only if RSI(14) >= this (overbought bounce)
+    adxMin: null, // require ADX(14) >= this (trend strength) on both sides
+    percentBMax: null, // long: require Bollinger %B <= this (near/below lower band)
+    percentBMin: null, // short: require Bollinger %B >= this (near/above upper band)
+    /** If set, the "near 100 SMA" band becomes ±(atrBandMult × ATR%) instead of
+     *  the fixed ±3%, so volatility scales the entry zone. */
+    atrBandMult: null,
+  },
 };
 
 export const EXIT = {
-  stopLossPct: 8,
-  takeProfitPct: 15,
+  stopLossPct: 6,
+  takeProfitPct: 12,
   /** Long: exit when close falls below 200 SMA. Short: exit when close rises above. */
   stopOn200Sma: true,
-  maxHoldDays: 30,
+  /** Time stop in *calendar* days from entry (≈14 trading days for 20). */
+  maxHoldDays: 20,
+
+  /** Optional ATR-based stop / target (off by default). When enabled, an
+   *  additional stop fires at stopMult×ATR below entry and a target at
+   *  targetMult×ATR above (set targetMult null to only add the stop). */
+  atrStop: {
+    enabled: false,
+    period: 14,
+    stopMult: 2.5,
+    targetMult: 4,
+  },
 
   /** Take profit early when the trade thesis plays out or momentum fades. */
   earlyProfit: {
     enabled: true,
-    /** Minimum open profit before any early exit fires. */
     minProfitPct: 2.5,
-    /** Long: bounce worked — price reclaimed ~4%+ above the 100 SMA. */
-    longBounceAbove100Pct: 4,
-    /** Short: fade worked — price rejected ~4%+ below the 100 SMA. */
+    longBounceAbove100Pct: 3,
     shortRejectBelow100Pct: -4,
-    /** Exit on opposite candle (star on long, hammer on short) while in profit. */
     oppositePattern: true,
     oppositePatternMinProfitPct: 2,
-    /** Trailing stop once peak profit reaches this level. */
-    trailAfterPct: 5,
-    trailDistancePct: 2.5,
+    trailAfterPct: 3,
+    trailDistancePct: 1.5,
   },
 };
 

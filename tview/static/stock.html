@@ -11,7 +11,7 @@
   <header class="header">
     <div>
       <h1 id="title">Stock Dashboard</h1>
-      <p class="subtitle">Live price with 100 / 200 period simple moving averages</p>
+      <p class="subtitle">Candles with EMA 10, SMA 100 / 200, and volume</p>
     </div>
     <div class="meta">
       <nav class="top-nav">
@@ -27,37 +27,46 @@
   <nav class="stock-picker" id="stock-picker" aria-label="Top US stocks"></nav>
 
   <main class="grid">
-    <section class="panel">
+    <section class="panel chart-panel">
       <div class="panel-head">
         <h2>Daily</h2>
         <span class="legend">
-          <span class="dot price"></span> Price
+          <span class="dot candle-up"></span> Up
+          <span class="dot candle-down"></span> Down
+          <span class="dot ema10"></span> EMA 10
           <span class="dot sma100"></span> SMA 100
           <span class="dot sma200"></span> SMA 200
+          <span class="dot vol"></span> Vol
         </span>
       </div>
       <div id="chart-1d" class="chart"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel chart-panel">
       <div class="panel-head">
         <h2>Weekly</h2>
         <span class="legend">
-          <span class="dot price"></span> Price
+          <span class="dot candle-up"></span> Up
+          <span class="dot candle-down"></span> Down
+          <span class="dot ema10"></span> EMA 10
           <span class="dot sma100"></span> SMA 100
           <span class="dot sma200"></span> SMA 200
+          <span class="dot vol"></span> Vol
         </span>
       </div>
       <div id="chart-1wk" class="chart"></div>
     </section>
 
-    <section class="panel">
+    <section class="panel chart-panel">
       <div class="panel-head">
         <h2>Monthly</h2>
         <span class="legend">
-          <span class="dot price"></span> Price
+          <span class="dot candle-up"></span> Up
+          <span class="dot candle-down"></span> Down
+          <span class="dot ema10"></span> EMA 10
           <span class="dot sma100"></span> SMA 100
           <span class="dot sma200"></span> SMA 200
+          <span class="dot vol"></span> Vol
         </span>
       </div>
       <div id="chart-1mo" class="chart"></div>

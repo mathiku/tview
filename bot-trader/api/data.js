@@ -230,3 +230,98 @@ export async function getStrategiesPayload() {
     backtest,
   };
 }
+
+function tradeSummary(trades, { start, end, initialCapital, finalEquity }) {
+  if (!trades.length) return null;
+
+  const startMs = new Date(`${start}T00:00:00Z`).getTime();
+  const endMs = new Date(`${end ?? new Date().toISOString().slice(0, 10)}T00:00:00Z`).getTime();
+  const years = Math.max((endMs - startMs) / (365.25 * 86400000), 0.1);
+
+  const wins = trades.filter((t) => t.pnlUsd > 0);
+  const losses = trades.filter((t) => t.pnlUsd <= 0);
+  const holds = trades.map((t) => t.holdDays).sort((a, b) => a - b);
+  const byYear = {};
+
+  for (const tr of trades) {
+    const y = tr.entryDate.slice(0, 4);
+    byYear[y] = (byYear[y] ?? 0) + 1;
+  }
+
+  const totalReturnPct = finalEquity
+    ? ((finalEquity - initialCapital) / initialCapital) * 100
+    : (trades.reduce((s, t) => s + t.pnlUsd, 0) / initialCapital) * 100;
+
+  return {
+    totalTrades: trades.length,
+    tradesPerYear: trades.length / years,
+    avgHoldDays: holds.reduce((s, d) => s + d, 0) / holds.length,
+    medianHoldDays: holds[Math.floor(holds.length / 2)],
+    winRate: (wins.length / trades.length) * 100,
+    avgPnlPct: trades.reduce((s, t) => s + t.pnlPct, 0) / trades.length,
+    avgWinPct: wins.length ? wins.reduce((s, t) => s + t.pnlPct, 0) / wins.length : 0,
+    avgLossPct: losses.length ? losses.reduce((s, t) => s + t.pnlPct, 0) / losses.length : 0,
+    totalReturnPct,
+    cagrPct: finalEquity ? (Math.pow(finalEquity / initialCapital, 1 / years) - 1) * 100 : null,
+    years,
+    byYear,
+  };
+}
+
+export async function getTradesPayload({ side = "all", year = "all", source = "backtest" } = {}) {
+  const state = await loadState();
+  const backtestFile = await latestBacktestFile();
+  let backtestTrades = [];
+  let backtestMeta = null;
+
+  if (backtestFile) {
+    const raw = await fs.readFile(backtestFile, "utf8");
+    const data = JSON.parse(raw);
+    backtestTrades = (data.trades ?? []).map((t) => ({ ...t, source: "backtest" }));
+    backtestMeta = {
+      file: path.basename(backtestFile),
+      period: {
+        start: data.config?.backtest?.startDate ?? BACKTEST.startDate,
+        end: data.config?.backtest?.endDate ?? null,
+      },
+      initialCapital: data.config?.backtest?.initialCapital ?? BACKTEST.initialCapital,
+      finalEquity: data.metrics?.finalEquity ?? null,
+    };
+  }
+
+  const paperTrades = (state.closedTrades ?? []).map((t) => ({ ...t, source: "paper" }));
+
+  let trades =
+    source === "paper" ? paperTrades : source === "all" ? [...backtestTrades, ...paperTrades] : backtestTrades;
+
+  if (side !== "all") trades = trades.filter((t) => (t.side ?? "long") === side);
+  if (year !== "all") trades = trades.filter((t) => t.entryDate.startsWith(year));
+
+  trades.sort((a, b) => b.entryDate.localeCompare(a.entryDate) || b.symbol.localeCompare(a.symbol));
+
+  const summarySource = source === "paper" ? paperTrades : backtestTrades;
+  const summary = backtestMeta
+    ? tradeSummary(summarySource, {
+        start: backtestMeta.period.start,
+        end: backtestMeta.period.end,
+        initialCapital: backtestMeta.initialCapital,
+        finalEquity: backtestMeta.finalEquity,
+      })
+    : tradeSummary(paperTrades, {
+        start: state.startedAt?.slice(0, 10) ?? "2020-01-01",
+        end: new Date().toISOString().slice(0, 10),
+        initialCapital: PAPER.initialCapital,
+        finalEquity: null,
+      });
+
+  return {
+    updated_at: new Date().toISOString(),
+    backtestFile: backtestMeta?.file ?? null,
+    period: backtestMeta?.period ?? null,
+    summary,
+    paperCount: paperTrades.length,
+    backtestCount: backtestTrades.length,
+    filteredCount: trades.length,
+    trades,
+  };
+}

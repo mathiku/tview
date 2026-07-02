@@ -15,7 +15,9 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = 5050;
+// Cloud hosts inject PORT and require binding all interfaces; default to local.
+const PORT = process.env.PORT ?? 5050;
+const HOST = process.env.BIND_HOST ?? "0.0.0.0";
 
 app.use(express.json());
 app.use("/static", express.static(path.join(__dirname, "static")));
@@ -101,11 +103,11 @@ app.get("/api/stock", async (req, res) => {
   }
 });
 
-app.listen(PORT, "127.0.0.1", async () => {
+app.listen(PORT, HOST, async () => {
   try {
     await buildScanUniverse();
   } catch (err) {
     console.error("Failed to build initial scan universe:", err);
   }
-  console.log(`Dashboard running at http://127.0.0.1:${PORT}`);
+  console.log(`Dashboard running at http://${HOST}:${PORT}`);
 });

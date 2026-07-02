@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "backtest": "node scripts/run-backtest.mjs",
+    "sweep": "node scripts/run-sweep.mjs",
+    "sweep:quick": "node scripts/run-sweep.mjs --quick",
     "fetch-data": "node scripts/fetch-data.mjs",
     "paper": "node scripts/run-paper.mjs",
     "paper:ibkr": "node scripts/run-paper.mjs --ibkr",

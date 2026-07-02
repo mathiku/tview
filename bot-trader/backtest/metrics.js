@@ -1,3 +1,22 @@
+/**
+ * Reconstruct a realized-P&L equity curve for a subset of trades (e.g. longs
+ * only), ordered by exit date and compounding cumulative pnlUsd on the initial
+ * capital. Used for per-side metrics so their return / drawdown reflect that
+ * side alone rather than the combined mark-to-market portfolio curve.
+ */
+export function realizedEquityCurve(trades, initialCapital) {
+  const sorted = [...trades].sort((a, b) =>
+    a.exitDate < b.exitDate ? -1 : a.exitDate > b.exitDate ? 1 : 0
+  );
+  let equity = initialCapital;
+  const curve = [{ date: sorted[0]?.entryDate ?? null, equity }];
+  for (const t of sorted) {
+    equity += t.pnlUsd;
+    curve.push({ date: t.exitDate, equity });
+  }
+  return curve;
+}
+
 export function summarizeMetrics(trades, equityCurve, initialCapital) {
   if (!trades.length) {
     return {

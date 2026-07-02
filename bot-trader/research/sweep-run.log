@@ -1,0 +1,48 @@
+Strategy sweep (quick) · 2020-01-01 → 2026-06-21
+
+Loading 60 symbols…
+  20/60  40/60  60/60
+Loaded 60 symbols.
+Loading benchmarks (SPY, QQQ)…
+  SPY buy-and-hold: +109.83% total · +14.17% CAGR · 25.4% max DD
+  QQQ buy-and-hold: +154.77% total · +18.20% CAGR · 35.6% max DD
+
+Running 10 strategy variants…
+
+  [1/10] Current (long + short)… +0.77% CAGR · 718 trades · 688s · ✗ below SPY
+  [2/10] Long only… +2.54% CAGR · 1052 trades · 250s · ✗ below SPY
+  [3/10] Long + pattern filter… -0.66% CAGR · 530 trades · 331s · ✗ below SPY
+  [4/10] Long fast exits… +0.86% CAGR · 1357 trades · 285s · ✗ below SPY
+  [5/10] Long full deploy… +1.06% CAGR · 1607 trades · 335s · ✗ below SPY
+  [6/10] Long snipe… -1.21% CAGR · 287 trades · 366s · ✗ below SPY
+  [7/10] Long tight trail… +2.30% CAGR · 741 trades · 371s · ✗ below SPY
+  [8/10] Long 6% stop… +1.91% CAGR · 659 trades · 370s · ✗ below SPY
+  [9/10] Long pattern + fast exit… +1.03% CAGR · 480 trades · 364s · ✗ below SPY
+  [10/10] Long compound focus… -0.53% CAGR · 1912 trades · 338s · ✗ below SPY
+
+══════════════════════════════════════════════════════════════════════════
+  RANKED BY CAGR vs SPY / QQQ
+══════════════════════════════════════════════════════════════════════════
+
+  Benchmark  SPY: +14.17% CAGR · +109.83% total · DD 25.4%
+  Benchmark  QQQ: +18.20% CAGR · +154.77% total · DD 35.6%
+
+  Strategy                     CAGR     Return    MaxDD   Trades  PF    vs SPY
+  ──────────────────────────────────────────────────────────────────────────────
+  · Long only                  +2.54%   +17.63%   18.8%   1052    1.08  -11.63%
+  · Long tight trail           +2.30%   +15.86%   16.9%   741     1.09  -11.87%
+  · Long 6% stop               +1.91%   +13.00%   16.2%   659     1.08  -12.26%
+  · Long full deploy           +1.06%   +7.09%    20.0%   1607    1.04  -13.10%
+  · Long pattern + fast exit   +1.03%   +6.86%    9.3%    480     1.07  -13.14%
+  · Long fast exits            +0.86%   +5.72%    19.1%   1357    1.03  -13.30%
+  · Current (long + short)     +0.77%   +5.06%    46.0%   718     1.03  -13.40%
+  · Long compound focus        -0.53%   -3.40%    19.3%   1912    0.98  -14.70%
+  · Long + pattern filter      -0.66%   -4.17%    19.0%   530     0.97  -14.82%
+  · Long snipe                 -1.21%   -7.58%    24.3%   287     0.93  -15.38%
+
+── Beats SPY on CAGR + lower drawdown ─────────────────────────────────────
+  None yet — no variant beat SPY on both return and risk.
+  Closest: Long only at +2.54% CAGR (-11.63% vs SPY)
+
+Full results: /Users/mat/Documents/trading/bot-trader/research/sweep-quick-2026-06-21.json
+

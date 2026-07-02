@@ -1,5 +1,10 @@
 /** Stock scanning, SMA analysis, and pullback scoring. */
-import { analyzePatterns, analyzeShortPatterns, patternLabel, shortPatternLabel } from "./patterns.js";
+import {
+  analyzePatterns,
+  analyzeShortPatterns,
+  patternLabel,
+  shortPatternLabel,
+} from "./patterns.js";
 import {
   BIG_STOCKS,
   BIG_STOCK_BY_SYMBOL,
@@ -8,6 +13,7 @@ import {
   pickRandomBigStocks,
 } from "./universe.js";
 import { loadPinned, lookupName } from "./pinned.js";
+import { latestIndicators } from "./indicators.js";
 
 export { BIG_STOCKS as TOP_STOCKS };
 
@@ -45,7 +51,14 @@ export function withSmas(rows) {
   const sma200 = rollingSma(closes, 200);
 
   return rows.map((row, i) => {
-    const point = { time: row.time, close: round2(row.close) };
+    const point = {
+      time: row.time,
+      open: round2(row.open),
+      high: round2(row.high),
+      low: round2(row.low),
+      close: round2(row.close),
+      volume: row.volume ?? 0,
+    };
     if (sma100[i] != null) point.sma100 = round2(sma100[i]);
     if (sma200[i] != null) point.sma200 = round2(sma200[i]);
     return point;
@@ -72,17 +85,44 @@ export function resample(rows, mode) {
 
   for (const row of rows) {
     const key = mode === "1wk" ? weekKey(row.time) : monthKey(row.time);
-    buckets.set(key, row);
+    const existing = buckets.get(key);
+    if (!existing) {
+      buckets.set(key, {
+        time: row.time,
+        open: row.open,
+        high: row.high,
+        low: row.low,
+        close: row.close,
+        volume: row.volume,
+      });
+    } else {
+      // Keep the last timestamp + close, aggregate high/low/volume,
+      // preserve the first open of the period.
+      existing.time = row.time;
+      existing.high = Math.max(existing.high, row.high);
+      existing.low = Math.min(existing.low, row.low);
+      existing.close = row.close;
+      existing.volume += row.volume;
+    }
   }
 
   return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+/** How many years of daily history to request. SMA-200 on the monthly chart
+ *  needs ~200 monthly bars ≈ 16.7 years, so anything less silently leaves the
+ *  weekly/monthly SMA-200 (and the multi-timeframe trend gate) undefined. */
+const HISTORY_YEARS = 20;
+
+function defaultPeriod1() {
+  return Math.floor(Date.now() / 1000) - HISTORY_YEARS * 365 * 86400;
 }
 
 export async function fetchSymbolMeta(symbol) {
   const period2 = Math.floor(Date.now() / 1000);
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?interval=1d&period1=0&period2=${period2}&includePrePost=false`;
+    `?interval=1d&period1=${defaultPeriod1()}&period2=${period2}&includePrePost=false`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0" },
@@ -103,7 +143,7 @@ export async function fetchSymbolMeta(symbol) {
 export async function fetchDailyRows(symbol, { period2 = Math.floor(Date.now() / 1000) } = {}) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?interval=1d&period1=0&period2=${period2}&includePrePost=false`;
+    `?interval=1d&period1=${defaultPeriod1()}&period2=${period2}&includePrePost=false`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0" },
@@ -213,7 +253,7 @@ function bearChecks(comparison) {
 }
 
 /** Uptrend intact + daily tag of 100 SMA after a recent stretch higher. */
-export function scorePullback(dailyRows, comparison) {
+export function scorePullback(dailyRows, comparison, opts = {}) {
   const dailyData = buildSeries(dailyRows, "1d");
   const bullishChecks = bullChecks(comparison);
   const bullAbove = bullishChecks.filter((c) => c.above).length;
@@ -223,14 +263,27 @@ export function scorePullback(dailyRows, comparison) {
   const wk200 = comparison["1wk"].vs_sma200_pct;
   const mo200 = comparison["1mo"].vs_sma200_pct;
 
+  const indicators = latestIndicators(dailyRows, opts.indicatorCfg);
+  const filters = opts.filters ?? {};
+
   const trendOk =
     (wk200 != null && wk200 > 0 && mo200 != null && mo200 > 0) ||
     bullAbove >= PULLBACK_MIN_BULL_CHECKS;
 
+  // Fixed ±3% band, or an ATR-scaled band when filters.atrBandMult is set.
+  const nearPct =
+    filters.atrBandMult != null && indicators?.atrPct != null
+      ? round2(filters.atrBandMult * indicators.atrPct)
+      : PULLBACK_NEAR_PCT;
+
   const at100Sma =
-    dailyVs100 != null &&
-    dailyVs100 <= PULLBACK_NEAR_PCT &&
-    dailyVs100 >= -PULLBACK_NEAR_PCT;
+    dailyVs100 != null && dailyVs100 <= nearPct && dailyVs100 >= -nearPct;
+
+  const filtersPass =
+    (filters.rsiMax == null || (indicators?.rsi != null && indicators.rsi <= filters.rsiMax)) &&
+    (filters.adxMin == null || (indicators?.adx != null && indicators.adx >= filters.adxMin)) &&
+    (filters.percentBMax == null ||
+      (indicators?.percentB != null && indicators.percentB <= filters.percentBMax));
 
   let maxRecentAbove100 = null;
   let wasHigherRecently = false;
@@ -245,7 +298,7 @@ export function scorePullback(dailyRows, comparison) {
     if (pct >= PULLBACK_MIN_PRIOR_ABOVE_PCT) wasHigherRecently = true;
   }
 
-  const watch = trendOk && at100Sma && wasHigherRecently;
+  const watch = trendOk && at100Sma && wasHigherRecently && filtersPass;
   const patterns = analyzePatterns(dailyRows, { at100Sma });
 
   let score = 0;
@@ -300,21 +353,23 @@ export function scorePullback(dailyRows, comparison) {
       trendOk,
       at100Sma,
       wasHigherRecently,
+      filtersPass,
     },
+    indicators,
     patterns,
   };
 }
 
 /** Evaluate pullback setup as-of the latest bar in dailyRows (no look-ahead). */
-export function evaluatePullback(dailyRows) {
+export function evaluatePullback(dailyRows, opts = {}) {
   if (dailyRows.length < 200) return null;
   const comparison = buildComparison(dailyRows);
-  const signal = scorePullback(dailyRows, comparison);
+  const signal = scorePullback(dailyRows, comparison, opts);
   return { ...signal, side: "long" };
 }
 
 /** Downtrend intact + daily tag of 100 SMA after a recent stretch lower. */
-export function scoreRallyShort(dailyRows, comparison) {
+export function scoreRallyShort(dailyRows, comparison, opts = {}) {
   const dailyData = buildSeries(dailyRows, "1d");
   const bearishChecks = bearChecks(comparison);
   const bearBelow = bearishChecks.filter((c) => c.below).length;
@@ -324,14 +379,27 @@ export function scoreRallyShort(dailyRows, comparison) {
   const wk200 = comparison["1wk"].vs_sma200_pct;
   const mo200 = comparison["1mo"].vs_sma200_pct;
 
+  const indicators = latestIndicators(dailyRows, opts.indicatorCfg);
+  const filters = opts.filters ?? {};
+
   const trendOk =
     (wk200 != null && wk200 < 0 && mo200 != null && mo200 < 0) ||
     bearBelow >= PULLBACK_MIN_BULL_CHECKS;
 
+  const nearPct =
+    filters.atrBandMult != null && indicators?.atrPct != null
+      ? round2(filters.atrBandMult * indicators.atrPct)
+      : PULLBACK_NEAR_PCT;
+
   const at100Sma =
-    dailyVs100 != null &&
-    dailyVs100 <= PULLBACK_NEAR_PCT &&
-    dailyVs100 >= -PULLBACK_NEAR_PCT;
+    dailyVs100 != null && dailyVs100 <= nearPct && dailyVs100 >= -nearPct;
+
+  const filtersPass =
+    (filters.rsiMinShort == null ||
+      (indicators?.rsi != null && indicators.rsi >= filters.rsiMinShort)) &&
+    (filters.adxMin == null || (indicators?.adx != null && indicators.adx >= filters.adxMin)) &&
+    (filters.percentBMin == null ||
+      (indicators?.percentB != null && indicators.percentB >= filters.percentBMin));
 
   let minRecentBelow100 = null;
   let wasLowerRecently = false;
@@ -346,7 +414,7 @@ export function scoreRallyShort(dailyRows, comparison) {
     if (pct <= -PULLBACK_MIN_PRIOR_ABOVE_PCT) wasLowerRecently = true;
   }
 
-  const watch = trendOk && at100Sma && wasLowerRecently;
+  const watch = trendOk && at100Sma && wasLowerRecently && filtersPass;
   const patterns = analyzeShortPatterns(dailyRows, { at100Sma });
 
   let score = 0;
@@ -401,16 +469,18 @@ export function scoreRallyShort(dailyRows, comparison) {
       trendOk,
       at100Sma,
       wasLowerRecently,
+      filtersPass,
     },
+    indicators,
     patterns,
   };
 }
 
 /** Evaluate short rally setup as-of the latest bar (no look-ahead). */
-export function evaluateRallyShort(dailyRows) {
+export function evaluateRallyShort(dailyRows, opts = {}) {
   if (dailyRows.length < 200) return null;
   const comparison = buildComparison(dailyRows);
-  const signal = scoreRallyShort(dailyRows, comparison);
+  const signal = scoreRallyShort(dailyRows, comparison, opts);
   return { ...signal, side: "short" };
 }
 

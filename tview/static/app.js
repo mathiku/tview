@@ -8,6 +8,18 @@ const DEFAULT_RANGES = {
   "1mo": 10 * 365 * SEC_DAY,
 };
 
+const TV = {
+  bg: "#ffffff",
+  text: "#131722",
+  grid: "#f0f3fa",
+  border: "#e0e3eb",
+  up: "#089981",
+  down: "#F23645",
+  ema10: "#089981",
+  sma100: "#2962FF",
+  sma200: "#F23645",
+};
+
 const charts = {};
 const series = {};
 let currentSymbol = null;
@@ -31,38 +43,96 @@ function pctClass(value) {
   return "neutral";
 }
 
+function rollingEma(values, period) {
+  const out = new Array(values.length).fill(null);
+  const k = 2 / (period + 1);
+  let ema = null;
+
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v == null) continue;
+
+    if (ema == null) {
+      if (i < period - 1) continue;
+      let sum = 0;
+      for (let j = i - period + 1; j <= i; j++) sum += values[j];
+      ema = sum / period;
+      out[i] = ema;
+      continue;
+    }
+
+    ema = v * k + ema * (1 - k);
+    out[i] = ema;
+  }
+
+  return out;
+}
+
 function createChart(containerId) {
   const container = document.getElementById(containerId);
   const chart = LightweightCharts.createChart(container, {
     layout: {
-      background: { color: "#171a22" },
-      textColor: "#9aa0a6",
+      background: { color: TV.bg },
+      textColor: TV.text,
+      fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
     },
     grid: {
-      vertLines: { color: "#222733" },
-      horzLines: { color: "#222733" },
+      vertLines: { color: TV.grid },
+      horzLines: { color: TV.grid },
     },
-    rightPriceScale: { borderColor: "#2a2f3a" },
-    timeScale: { borderColor: "#2a2f3a" },
+    rightPriceScale: {
+      borderColor: TV.border,
+      scaleMargins: { top: 0.05, bottom: 0.22 },
+    },
+    timeScale: {
+      borderColor: TV.border,
+      timeVisible: true,
+      secondsVisible: false,
+    },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
   });
 
-  const price = chart.addLineSeries({
-    color: "#ffffff",
-    lineWidth: 2,
-    title: "Price",
+  const volume = chart.addHistogramSeries({
+    priceFormat: { type: "volume" },
+    priceScaleId: "volume",
+  });
+
+  chart.priceScale("volume").applyOptions({
+    scaleMargins: { top: 0.82, bottom: 0 },
+    borderVisible: false,
+  });
+
+  const candles = chart.addCandlestickSeries({
+    upColor: TV.up,
+    downColor: TV.down,
+    borderUpColor: TV.up,
+    borderDownColor: TV.down,
+    wickUpColor: TV.up,
+    wickDownColor: TV.down,
+  });
+
+  const ema10 = chart.addLineSeries({
+    color: TV.ema10,
+    lineWidth: 1,
+    title: "EMA 10",
+    priceLineVisible: false,
+    lastValueVisible: true,
   });
 
   const sma100 = chart.addLineSeries({
-    color: "#4da3ff",
-    lineWidth: 2,
+    color: TV.sma100,
+    lineWidth: 1,
     title: "SMA 100",
+    priceLineVisible: false,
+    lastValueVisible: true,
   });
 
   const sma200 = chart.addLineSeries({
-    color: "#ff5c5c",
-    lineWidth: 2,
+    color: TV.sma200,
+    lineWidth: 1,
     title: "SMA 200",
+    priceLineVisible: false,
+    lastValueVisible: true,
   });
 
   const resizeObserver = new ResizeObserver(() => {
@@ -73,7 +143,7 @@ function createChart(containerId) {
   });
   resizeObserver.observe(container);
 
-  return { chart, price, sma100, sma200 };
+  return { chart, candles, volume, ema10, sma100, sma200 };
 }
 
 function initCharts() {
@@ -95,12 +165,38 @@ function applyDefaultVisibleRange(key, rows) {
 }
 
 function updateChart(key, rows) {
-  const { price, sma100, sma200 } = series[key];
+  const { candles, volume, ema10, sma100, sma200 } = series[key];
+  const closes = rows.map((r) => r.close);
+  const emaValues = rollingEma(closes, 10);
 
-  price.setData(rows.map((r) => ({ time: r.time, value: r.close })));
+  candles.setData(
+    rows.map((r) => ({
+      time: r.time,
+      open: r.open,
+      high: r.high,
+      low: r.low,
+      close: r.close,
+    }))
+  );
+
+  volume.setData(
+    rows.map((r) => ({
+      time: r.time,
+      value: r.volume ?? 0,
+      color: r.close >= r.open ? "rgba(8, 153, 129, 0.55)" : "rgba(242, 54, 69, 0.55)",
+    }))
+  );
+
+  ema10.setData(
+    rows
+      .map((r, i) => (emaValues[i] != null ? { time: r.time, value: emaValues[i] } : null))
+      .filter(Boolean)
+  );
+
   sma100.setData(
     rows.filter((r) => r.sma100 != null).map((r) => ({ time: r.time, value: r.sma100 }))
   );
+
   sma200.setData(
     rows.filter((r) => r.sma200 != null).map((r) => ({ time: r.time, value: r.sma200 }))
   );

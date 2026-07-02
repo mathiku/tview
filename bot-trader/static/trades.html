@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bot Trader — All Trades</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <nav class="top-nav">
+          <a class="nav-link" href="/">Live bot</a>
+          <a class="nav-link" href="/strategies">Strategies & results</a>
+          <a class="nav-link active" href="/trades">All trades</a>
+          <a class="nav-link" href="http://127.0.0.1:5050" target="_blank">Pullback scanner</a>
+        </nav>
+        <h1>Trade History</h1>
+        <p class="subtitle" id="page-subtitle">Backtest + paper trades</p>
+      </div>
+      <div class="meta"><span id="updated-at">Loading…</span></div>
+    </header>
+
+    <section class="stats" id="summary-stats"></section>
+
+    <div class="layout full">
+      <div class="panel">
+        <div class="panel-head">
+          <span>Filters</span>
+          <span id="trade-count"></span>
+        </div>
+        <div class="panel-body filter-row">
+          <label>Source <select id="filter-source"><option value="backtest">Backtest</option><option value="paper">Paper only</option><option value="all">All</option></select></label>
+          <label>Side <select id="filter-side"><option value="all">All</option><option value="long">Long</option><option value="short">Short</option></select></label>
+          <label>Year <select id="filter-year"><option value="all">All years</option></select></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout full">
+      <div class="panel">
+        <div class="panel-head"><span>Trades</span></div>
+        <div class="panel-body table-scroll" id="trades-table"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/static/trades.js"></script>
+  </body>
+</html>

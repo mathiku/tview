@@ -1,3 +1,12 @@
 {
-  "stocks": []
+  "stocks": [
+    {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation"
+    },
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc."
+    }
+  ]
 }

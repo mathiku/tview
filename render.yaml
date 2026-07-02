@@ -1,0 +1,13 @@
+# Render blueprint for the tview Pullback Watcher.
+# Deploy: push to GitHub, then Render → New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: pullback-watcher
+    runtime: node
+    rootDir: tview
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

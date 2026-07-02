@@ -1,7 +1,39 @@
 import { BACKTEST, ENTRY, EXIT } from "../config.js";
 import { rowDate } from "../data/fetch.js";
 import { positionPnlPct, scanEntries, shouldExit, sma200At } from "./signals.js";
-import { summarizeMetrics } from "./metrics.js";
+import { summarizeMetrics, realizedEquityCurve } from "./metrics.js";
+import { cagrFromMetrics } from "../research/benchmark.js";
+import { rollingSma } from "../../tview/stocks.js";
+
+/** Precompute a benchmark's SMA series for the optional market-regime filter. */
+function buildRegime(universeRows, regimeCfg) {
+  if (!regimeCfg?.enabled) return null;
+  const rows = universeRows.get(regimeCfg.symbol);
+  if (!rows) {
+    console.warn(
+      `regimeFilter: benchmark ${regimeCfg.symbol} not in universe — filter disabled`
+    );
+    return null;
+  }
+  const sma = rollingSma(rows.map((r) => r.close), regimeCfg.smaPeriod ?? 200);
+  return { rows, sma };
+}
+
+/** true = benchmark above its SMA (risk-on), false = below, null = unknown. */
+function regimeBullish(regime, unix) {
+  if (!regime) return null;
+  const idx = indexAtOrBefore(regime.rows, unix);
+  if (idx < 0 || regime.sma[idx] == null) return null;
+  return regime.rows[idx].close > regime.sma[idx];
+}
+
+function mergeExit(overrides = {}) {
+  return {
+    ...EXIT,
+    ...overrides,
+    earlyProfit: { ...EXIT.earlyProfit, ...overrides.earlyProfit },
+  };
+}
 
 function applySlippage(price, action, slippagePct) {
   const factor =
@@ -126,14 +158,21 @@ function markToMarket(positions, universeRows, unix) {
     const idx = indexAtOrBefore(rows, unix);
     const price =
       idx >= 0 && rows[idx].time === unix ? rows[idx].close : pos.entryPrice;
+    // Long: positions hold assets worth shares*price. Short: entry credited the
+    // proceeds to cash already, so the position contributes only the cover
+    // liability (-shares*price) — adding shares*(entry-price) double-counts it.
     if (pos.side === "long") value += pos.shares * price;
-    else value += pos.shares * (pos.entryPrice - price);
+    else value -= pos.shares * price;
   }
   return value;
 }
 
 export function runBacktest(universeRows, options = {}) {
+  const entryCfg = { ...ENTRY, ...options.entry };
+  const exitCfg = mergeExit(options.exit);
   const cfg = { ...BACKTEST, ...options };
+  delete cfg.entry;
+  delete cfg.exit;
   const allDates = buildTimeline(universeRows);
   const warmupCutoff = allDates[Math.min(cfg.warmupDays, allDates.length - 1)] ?? allDates[0];
   const timeline = filterTimeline(allDates, cfg).filter((unix) => unix >= warmupCutoff);
@@ -144,6 +183,7 @@ export function runBacktest(universeRows, options = {}) {
   const pendingEntries = [];
   const equityCurve = [];
   const symbols = [...universeRows.keys()];
+  const regime = buildRegime(universeRows, cfg.regimeFilter);
 
   for (const unix of timeline) {
     const date = rowDate({ time: unix });
@@ -211,7 +251,7 @@ export function runBacktest(universeRows, options = {}) {
         bar,
         sma200,
         holdDays,
-        exitCfg: EXIT,
+        exitCfg,
         dailyRows: rows,
         barIndex: idx,
         peakPnlPct: pos.peakPnlPct,
@@ -231,6 +271,7 @@ export function runBacktest(universeRows, options = {}) {
 
     if (slots > 0) {
       const candidates = [];
+      const bull = regimeBullish(regime, unix);
 
       for (const symbol of symbols) {
         const rows = universeRows.get(symbol);
@@ -241,9 +282,13 @@ export function runBacktest(universeRows, options = {}) {
         const entries = scanEntries(slice, {
           enableLongs: cfg.enableLongs,
           enableShorts: cfg.enableShorts,
+          entryCfg,
         });
 
         for (const entry of entries) {
+          // Market-regime gate (no-op when disabled or benchmark absent).
+          if (bull === true && entry.side === "short") continue;
+          if (bull === false && entry.side === "long") continue;
           const key = positionKey(symbol, entry.side);
           if (held.has(key) || queued.has(key)) continue;
           candidates.push({ symbol, side: entry.side, signal: entry.signal, signalDate: date });
@@ -279,12 +324,29 @@ export function runBacktest(universeRows, options = {}) {
   const longTrades = closedTrades.filter((t) => t.side === "long");
   const shortTrades = closedTrades.filter((t) => t.side === "short");
 
+  const metrics = summarizeMetrics(closedTrades, equityCurve, cfg.initialCapital);
+  const endDate = cfg.endDate ?? rowDate({ time: timeline[timeline.length - 1] });
+  // Anchor CAGR to when capital actually started working, not the config
+  // startDate (warmup can push the real start months later).
+  const startDate = equityCurve[0]?.date ?? cfg.startDate;
+  const cagrPct = cagrFromMetrics(metrics.finalEquity, cfg.initialCapital, startDate, endDate);
+
   return {
-    config: { backtest: cfg, entry: ENTRY, exit: EXIT },
+    config: { backtest: cfg, entry: entryCfg, exit: exitCfg },
     trades: closedTrades,
     equityCurve,
-    metrics: summarizeMetrics(closedTrades, equityCurve, cfg.initialCapital),
-    metricsLong: summarizeMetrics(longTrades, equityCurve, cfg.initialCapital),
-    metricsShort: summarizeMetrics(shortTrades, equityCurve, cfg.initialCapital),
+    metrics: { ...metrics, cagrPct },
+    // Per-side metrics use each side's own realized-P&L curve so return /
+    // drawdown are isolated, not the combined portfolio curve.
+    metricsLong: summarizeMetrics(
+      longTrades,
+      realizedEquityCurve(longTrades, cfg.initialCapital),
+      cfg.initialCapital
+    ),
+    metricsShort: summarizeMetrics(
+      shortTrades,
+      realizedEquityCurve(shortTrades, cfg.initialCapital),
+      cfg.initialCapital
+    ),
   };
 }
