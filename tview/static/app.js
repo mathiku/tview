@@ -23,7 +23,9 @@ const TV = {
 const charts = {};
 const series = {};
 let currentSymbol = null;
+let currentName = "";
 let stocks = [];
+let baseStocks = [];
 
 function fmtMoney(value) {
   if (value == null) return "—";
@@ -257,13 +259,75 @@ function updatePickerActive() {
   });
 }
 
+function mergedPicker() {
+  const wl = Store.getWatchlist() || [];
+  const wlSyms = new Set(wl.map((s) => s.symbol));
+  const pinned = wl.map((s) => ({ symbol: s.symbol, name: s.name, pinned: true }));
+  const rest = baseStocks
+    .filter((s) => !wlSyms.has(s.symbol))
+    .map((s) => ({ ...s, pinned: false }));
+  return [...pinned, ...rest];
+}
+
+function rebuildPicker() {
+  stocks = mergedPicker();
+  renderStockPicker();
+  updatePickerActive();
+}
+
+async function seedWatchlist() {
+  if (Store.getWatchlist() != null) return;
+  try {
+    const res = await fetch("/api/pinned");
+    const p = await res.json();
+    Store.setWatchlist(p.stocks ?? []);
+  } catch {
+    Store.setWatchlist([]);
+  }
+}
+
 async function loadStocks() {
   const res = await fetch("/api/stocks");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const payload = await res.json();
-  stocks = payload.stocks;
+  baseStocks = payload.stocks;
+  await seedWatchlist();
+  stocks = mergedPicker();
   currentSymbol = new URLSearchParams(window.location.search).get("symbol") || payload.default;
   renderStockPicker();
+}
+
+function setupItem(label, value, cls = "") {
+  return `<div class="setup-item"><span class="setup-label">${label}</span><span class="setup-value ${cls}">${value}</span></div>`;
+}
+
+function renderSetup(signal) {
+  const box = document.getElementById("setup-box");
+  if (!box) return;
+  const lv = signal?.levels;
+  const db = signal?.doubleBottom;
+  const parts = [];
+  if (lv) {
+    parts.push(setupItem("Entry", `$${lv.entry.toFixed(2)}`));
+    parts.push(setupItem("Stop", `$${lv.stop.toFixed(2)} (−${lv.riskPct}%)`, "stop"));
+    parts.push(setupItem("Target", `$${lv.target.toFixed(2)} (+${lv.rewardPct}%)`, "target"));
+    parts.push(setupItem("Risk : reward", `1 : ${lv.rr}`));
+  }
+  const dbText = db?.match
+    ? db.breakout
+      ? `Broke out · neckline $${db.neckline}`
+      : `Emerging · neckline $${db.neckline}`
+    : "None";
+  parts.push(setupItem("Double bottom", dbText, db?.match ? "target" : ""));
+  box.innerHTML = parts.join("");
+}
+
+function updatePinButton() {
+  const btn = document.getElementById("pin-btn");
+  if (!btn) return;
+  const on = Store.has(currentSymbol);
+  btn.classList.toggle("on", on);
+  btn.textContent = on ? "★ On watchlist" : "☆ Add to watchlist";
 }
 
 async function selectStock(symbol) {
@@ -285,6 +349,7 @@ async function refresh(attempt = 0) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const payload = await res.json();
 
+    currentName = payload.name;
     document.getElementById("title").textContent =
       `${payload.symbol} · ${payload.name}`;
     document.getElementById("last-updated").textContent =
@@ -292,6 +357,8 @@ async function refresh(attempt = 0) {
 
     INTERVALS.forEach((key) => updateChart(key, payload.charts[key].data));
     updateTable(payload.comparison);
+    renderSetup(payload.signal);
+    updatePinButton();
     setStatus("Live", "live");
   } catch (err) {
     console.error(err);
@@ -309,6 +376,11 @@ async function refresh(attempt = 0) {
 
 async function boot() {
   initCharts();
+  document.getElementById("pin-btn").addEventListener("click", () => {
+    Store.toggle(currentSymbol, currentName);
+    updatePinButton();
+    rebuildPicker();
+  });
   await loadStocks();
   await refresh();
   setInterval(() => refresh(), REFRESH_MS);

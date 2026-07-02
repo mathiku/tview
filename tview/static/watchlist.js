@@ -18,10 +18,10 @@ function showError(message) {
 function renderList(stocks) {
   const list = document.getElementById("pinned-list");
   document.getElementById("watchlist-count").textContent =
-    stocks.length === 1 ? "1 pinned" : `${stocks.length} pinned`;
+    stocks.length === 1 ? "1 saved" : `${stocks.length} saved`;
 
   if (!stocks.length) {
-    list.innerHTML = `<li class="empty">No pinned stocks yet — add a symbol above.</li>`;
+    list.innerHTML = `<li class="empty">Your watchlist is empty — add a symbol above.</li>`;
     return;
   }
 
@@ -43,31 +43,23 @@ function renderList(stocks) {
     .join("");
 
   list.querySelectorAll(".btn-remove").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      try {
-        const res = await fetch(`/api/pinned/${encodeURIComponent(btn.dataset.symbol)}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
-        const payload = await res.json();
-        renderList(payload.stocks);
-        setStatus("Saved", "live");
-      } catch (err) {
-        console.error(err);
-        setStatus("Error", "error");
-        btn.disabled = false;
-      }
+    btn.addEventListener("click", () => {
+      renderList(Store.remove(btn.dataset.symbol));
+      setStatus("Saved", "live");
     });
   });
 }
 
-async function loadPinned() {
-  const res = await fetch("/api/pinned");
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const payload = await res.json();
-  renderList(payload.stocks);
-  setStatus("Live", "live");
+/** Seed the browser watchlist from the server default the first time only. */
+async function seedIfNeeded() {
+  if (Store.getWatchlist() != null) return Store.getWatchlist();
+  try {
+    const res = await fetch("/api/pinned");
+    const payload = await res.json();
+    return Store.setWatchlist(payload.stocks ?? []);
+  } catch {
+    return Store.setWatchlist([]);
+  }
 }
 
 document.getElementById("add-form").addEventListener("submit", async (event) => {
@@ -77,21 +69,24 @@ document.getElementById("add-form").addEventListener("submit", async (event) => 
   const input = document.getElementById("symbol-input");
   const symbol = input.value.trim().toUpperCase();
   if (!symbol) return;
+  if (Store.has(symbol)) {
+    showError(`${symbol} is already on your watchlist.`);
+    return;
+  }
 
   const button = event.target.querySelector("button[type=submit]");
   button.disabled = true;
+  setStatus("Checking…");
 
   try {
-    const res = await fetch("/api/pinned", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol }),
-    });
+    // Validate against Yahoo (and grab the name) before saving.
+    const res = await fetch(`/api/analyze?symbols=${encodeURIComponent(symbol)}`);
     const payload = await res.json();
-    if (!res.ok) throw new Error(payload.error || `HTTP ${res.status}`);
+    const match = payload.stocks?.[0];
+    if (!match) throw new Error(`Couldn't find data for ${symbol}.`);
 
     input.value = "";
-    renderList(payload.stocks);
+    renderList(Store.add(match.symbol, match.name));
     setStatus("Saved", "live");
   } catch (err) {
     showError(err.message);
@@ -101,7 +96,12 @@ document.getElementById("add-form").addEventListener("submit", async (event) => 
   }
 });
 
-loadPinned().catch((err) => {
-  console.error(err);
-  setStatus("Error", "error");
-});
+seedIfNeeded()
+  .then((list) => {
+    renderList(list);
+    setStatus("Live", "live");
+  })
+  .catch((err) => {
+    console.error(err);
+    setStatus("Error", "error");
+  });

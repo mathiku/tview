@@ -1,3 +1,81 @@
+function r2(n) {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Double-bottom ("W"): two similar swing lows separated by a peak (the
+ * neckline), with price now emerging up through that neckline. Scans the recent
+ * window and returns the most recent valid formation.
+ *
+ * match   = price has climbed back to/through the neckline ("on the way out").
+ * breakout = price is strictly above the neckline (confirmed).
+ */
+export function detectDoubleBottom(
+  rows,
+  {
+    window = 90,
+    swingK = 4,
+    similarPct = 3,
+    minDepthPct = 5,
+    minSeparation = 8,
+    breakoutBufferPct = 1,
+  } = {}
+) {
+  const n = rows.length;
+  if (n < 30) return { match: false, breakout: false };
+
+  const win = rows.slice(Math.max(0, n - window));
+  const m = win.length;
+
+  // Swing lows: local minima of `low` within ±swingK bars.
+  const lows = [];
+  for (let i = swingK; i < m - swingK; i++) {
+    let isLow = true;
+    for (let j = i - swingK; j <= i + swingK; j++) {
+      if (win[j].low < win[i].low) {
+        isLow = false;
+        break;
+      }
+    }
+    if (isLow) lows.push(i);
+  }
+  if (lows.length < 2) return { match: false, breakout: false };
+
+  // Most recent valid pair: latest second-low first, earliest matching first-low.
+  let best = null;
+  for (let b = lows.length - 1; b >= 1 && !best; b--) {
+    for (let a = b - 1; a >= 0; a--) {
+      const iA = lows[a];
+      const iB = lows[b];
+      if (iB - iA < minSeparation) continue;
+      const lowA = win[iA].low;
+      const lowB = win[iB].low;
+      const base = Math.min(lowA, lowB);
+      if ((Math.abs(lowA - lowB) / base) * 100 > similarPct) continue;
+
+      let neck = -Infinity;
+      for (let k = iA; k <= iB; k++) if (win[k].high > neck) neck = win[k].high;
+      if (((neck - base) / base) * 100 < minDepthPct) continue;
+
+      best = { iA, iB, base, neck };
+      break;
+    }
+  }
+  if (!best) return { match: false, breakout: false };
+
+  const price = win[m - 1].close;
+  return {
+    match: price >= best.neck * (1 - breakoutBufferPct / 100),
+    breakout: price > best.neck,
+    lowPrice: r2(best.base),
+    neckline: r2(best.neck),
+    // Classic measured-move target (informational).
+    target: r2(best.neck + (best.neck - best.base)),
+    low1Time: win[best.iA].time,
+    low2Time: win[best.iB].time,
+  };
+}
+
 export function isUpDay(rows, i) {
   return i >= 1 && rows[i].close > rows[i - 1].close;
 }

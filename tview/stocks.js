@@ -4,6 +4,7 @@ import {
   analyzeShortPatterns,
   patternLabel,
   shortPatternLabel,
+  detectDoubleBottom,
 } from "./patterns.js";
 import {
   BIG_STOCKS,
@@ -262,6 +263,44 @@ function bearChecks(comparison) {
   return checks;
 }
 
+export const RISK_REWARD = 1.2;
+
+/**
+ * Suggested long entry / stop / target. Stop sits just below the recent swing
+ * low (or the double-bottom low), falling back to 2×ATR when there's no usable
+ * low. Target = entry + RISK_REWARD × risk.
+ */
+export function suggestLevels(dailyData, indicators, swingLookback = 10) {
+  const n = dailyData.length;
+  if (!n) return null;
+  const entry = dailyData[n - 1].close;
+
+  const recent = dailyData.slice(-swingLookback);
+  const swingLow = Math.min(...recent.map((r) => r.low));
+
+  let stop = round2(swingLow * 0.998); // a hair below the low
+  let risk = entry - stop;
+
+  // Fall back to a 2×ATR stop when the swing low is unusable (at/above price,
+  // uselessly tight, or so far away the stop would be unreasonable).
+  const atr = indicators?.atr;
+  if (atr != null && (!(risk > 0) || risk < atr * 0.5 || risk > atr * 3)) {
+    stop = round2(entry - 2 * atr);
+    risk = entry - stop;
+  }
+  if (!(risk > 0)) return null;
+
+  const target = round2(entry + RISK_REWARD * risk);
+  return {
+    entry: round2(entry),
+    stop,
+    target,
+    riskPct: round2((risk / entry) * 100),
+    rewardPct: round2(((target - entry) / entry) * 100),
+    rr: RISK_REWARD,
+  };
+}
+
 /** Uptrend intact + daily tag of 100 SMA after a recent stretch higher. */
 export function scorePullback(dailyRows, comparison, opts = {}) {
   const dailyData = buildSeries(dailyRows, "1d");
@@ -310,6 +349,8 @@ export function scorePullback(dailyRows, comparison, opts = {}) {
 
   const watch = trendOk && at100Sma && wasHigherRecently && filtersPass;
   const patterns = analyzePatterns(dailyRows, { at100Sma });
+  const doubleBottom = detectDoubleBottom(dailyData);
+  const levels = suggestLevels(dailyData, indicators);
 
   let score = 0;
   if (watch) {
@@ -367,6 +408,8 @@ export function scorePullback(dailyRows, comparison, opts = {}) {
     },
     indicators,
     patterns,
+    doubleBottom,
+    levels,
   };
 }
 
@@ -577,26 +620,12 @@ async function loadHistory(symbol) {
   return rows;
 }
 
+// The shared scan is the random large-cap universe only. Per-user watchlists
+// live in the browser (localStorage) and are analysed on demand via
+// analyzeSymbols(), so one cached scan can be served to everyone.
 export async function buildScanUniverse() {
-  const pinned = await loadPinned();
-  pinnedSymbolsCache = new Set(pinned.map((s) => s.symbol));
-  const pinnedSymbols = pinned.map((s) => s.symbol);
-  const random = pickRandomBigStocks(pinnedSymbols, RANDOM_SCAN_COUNT, dailySeed());
-
-  const seen = new Set();
-  const universe = [];
-
-  for (const stock of pinned) {
-    if (seen.has(stock.symbol)) continue;
-    seen.add(stock.symbol);
-    universe.push({ ...stock, pinned: true });
-  }
-
-  for (const stock of random) {
-    if (seen.has(stock.symbol)) continue;
-    seen.add(stock.symbol);
-    universe.push({ ...stock, pinned: false });
-  }
+  const random = pickRandomBigStocks([], RANDOM_SCAN_COUNT, dailySeed());
+  const universe = random.map((stock) => ({ ...stock, pinned: false }));
 
   const key = `${dailySeed()}:${universe.map((s) => s.symbol).join(",")}`;
   activeUniverse = universe;
@@ -604,11 +633,29 @@ export async function buildScanUniverse() {
 
   return {
     universe,
-    pinnedCount: pinned.length,
-    randomCount: universe.length - pinned.length,
+    pinnedCount: 0,
+    randomCount: universe.length,
     poolSize: BIG_STOCKS.length,
     scanDate: dailySeed(),
   };
+}
+
+/** Analyse a caller-supplied list of symbols (a user's watchlist). */
+export async function analyzeSymbols(symbols) {
+  const session = sessionKey();
+  const items = symbols.map((s) => s.toUpperCase());
+  return mapPool(items, FETCH_CONCURRENCY, async (sym) => {
+    const { comparison, signal } = await loadStockAnalysis(sym, session);
+    const stock = BIG_STOCK_BY_SYMBOL.get(sym);
+    return {
+      symbol: sym,
+      name: stock?.name ?? lookupName(sym) ?? sym,
+      pinned: true,
+      price: comparison["1d"].price,
+      comparison,
+      signal,
+    };
+  });
 }
 
 async function getActiveUniverse() {
@@ -684,11 +731,12 @@ export async function getPayload(symbol) {
     activeUniverse.find((s) => s.symbol === symbol) ?? BIG_STOCK_BY_SYMBOL.get(symbol);
   const payload = {
     symbol,
-    name: stock?.name ?? symbol,
+    name: stock?.name ?? BIG_STOCK_BY_SYMBOL.get(symbol)?.name ?? symbol,
     updated_at: new Date().toISOString(),
     asOf: session,
     charts,
     comparison,
+    signal: scorePullback(dailyRows, comparison),
   };
 
   setMem(symbol, { ...cached, session, comparison, dailyRows, payload });
@@ -783,7 +831,8 @@ export async function getStocksForPicker() {
 
 export function resolveSymbol(raw) {
   const symbol = (raw || DEFAULT_SYMBOL).toUpperCase();
-  if (isAllowedSymbol(symbol)) return symbol;
-  if (activeUniverse.length) return activeUniverse[0].symbol;
+  // Accept any ticker-shaped symbol so custom watchlist entries can be charted;
+  // an unknown symbol simply 502s from Yahoo downstream.
+  if (/^[A-Z0-9.\-]{1,10}$/.test(symbol)) return symbol;
   return DEFAULT_SYMBOL;
 }

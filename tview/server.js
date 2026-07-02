@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { addPinned, loadPinned, removePinned } from "./pinned.js";
 import {
   DEFAULT_SYMBOL,
+  analyzeSymbols,
   buildScanUniverse,
   clearOverviewCache,
   fetchSymbolMeta,
@@ -87,6 +88,22 @@ app.delete("/api/pinned/:symbol", async (req, res) => {
 app.get("/api/overview", async (_req, res) => {
   try {
     res.json(await getOverview());
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/analyze", async (req, res) => {
+  try {
+    const raw = String(req.query.symbols ?? "").trim();
+    if (!raw) return res.json({ stocks: [] });
+    const symbols = raw
+      .split(",")
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean)
+      .slice(0, 40);
+    res.json({ stocks: await analyzeSymbols(symbols) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });

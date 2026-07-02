@@ -702,3 +702,136 @@ th {
     min-height: 320px;
   }
 }
+
+/* ── Watchlist pins, overview tools, filters, new columns ───────────────── */
+.overview-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.tool-check {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+.tool-btn {
+  background: #1a1f2a;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.tool-btn:hover {
+  border-color: var(--muted);
+}
+
+.pin-toggle {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 0 0.3rem 0 0;
+}
+.pin-toggle.on,
+.pin-toggle:hover {
+  color: #fcd34d;
+}
+
+/* Inline per-column filters in the grid header. */
+.overview-table thead th {
+  vertical-align: top;
+}
+.head-row th {
+  padding-top: 0.4rem;
+  padding-bottom: 0.5rem;
+}
+.th-label {
+  display: block;
+}
+.col-filter {
+  display: block;
+  width: 100%;
+  min-width: 46px;
+  margin-top: 0.3rem;
+  background: #0f1117;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.24rem 0.4rem;
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.col-filter::placeholder {
+  color: #4b5563;
+}
+.col-filter:focus {
+  outline: none;
+  border-color: var(--sma100);
+}
+.col-stock .col-filter {
+  min-width: 92px;
+}
+.chk-filter {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.35rem;
+}
+.chk-filter input {
+  cursor: pointer;
+  accent-color: var(--sma100);
+}
+
+.lvl {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.lvl-stop {
+  color: #fca5a5;
+}
+.lvl-target {
+  color: #86efac;
+}
+
+/* Trade-setup box on the stock detail page */
+.setup-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 0.9rem 1rem 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+.setup-item .setup-label {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.setup-item .setup-value {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.setup-value.stop { color: #fca5a5; }
+.setup-value.target { color: #86efac; }
+.header-pin {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+}
+.header-pin.on { color: #fcd34d; border-color: #fcd34d; }

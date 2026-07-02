@@ -28,35 +28,41 @@
     <section class="panel overview-panel">
       <div class="panel-head">
         <h2>Pullback candidates</h2>
-        <span class="hint">Green = above SMA · pattern ✓ = hammer, 3↑1–2↓ streak, or volume confirm</span>
+        <div class="overview-tools">
+          <label class="tool-check"><input type="checkbox" id="filter-watch" /> Watch only</label>
+          <button type="button" id="filter-clear" class="tool-btn">Clear filters</button>
+        </div>
       </div>
       <div class="table-wrap overview-wrap">
         <table class="overview-table">
           <thead>
-            <tr>
-              <th>Stock</th>
-              <th>Price</th>
-              <th class="focus-col">D · 100</th>
-              <th>D · 200</th>
-              <th>W · 100</th>
-              <th>W · 200</th>
-              <th>M · 100</th>
-              <th>M · 200</th>
-              <th>SMAs+</th>
-              <th colspan="3" class="group-head">Pullback</th>
-              <th colspan="3" class="group-head pattern-head">Patterns</th>
-              <th>Recent high</th>
-              <th>Signal</th>
-            </tr>
-            <tr class="subhead">
+            <tr class="group-row">
               <th colspan="9"></th>
-              <th title="W+M above 200 SMA or 5+/6 bull">Trend</th>
-              <th title="Daily within ±3% of 100 SMA">At 100</th>
-              <th title="Was ≥5% above daily 100 SMA in last ~4 weeks">Was high</th>
-              <th title="Hammer candle on latest bar">Hammer</th>
-              <th title="3 consecutive up days, then 1–2 down">3↑↓</th>
-              <th title="Light volume on pullback or heavy on hammer">Vol</th>
-              <th colspan="2"></th>
+              <th colspan="3" class="group-head">Pullback</th>
+              <th colspan="4" class="group-head pattern-head">Patterns</th>
+              <th colspan="4"></th>
+            </tr>
+            <tr class="head-row">
+              <th class="col-stock"><span class="th-label">Stock</span><input class="col-filter" data-key="text" data-type="text" placeholder="Filter…" /></th>
+              <th><span class="th-label">Price</span><input class="col-filter" data-key="price" data-type="num" placeholder="≥" /></th>
+              <th class="focus-col"><span class="th-label">D · 100</span><input class="col-filter" data-key="d100" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">D · 200</span><input class="col-filter" data-key="d200" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">W · 100</span><input class="col-filter" data-key="w100" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">W · 200</span><input class="col-filter" data-key="w200" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">M · 100</span><input class="col-filter" data-key="m100" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">M · 200</span><input class="col-filter" data-key="m200" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">SMAs+</span><input class="col-filter" data-key="smas" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label" title="W+M above 200 SMA or 5+/6 bull">Trend</span><label class="chk-filter"><input type="checkbox" data-check="trendOk" /></label></th>
+              <th><span class="th-label" title="Daily within ±3% of 100 SMA">At 100</span><label class="chk-filter"><input type="checkbox" data-check="at100Sma" /></label></th>
+              <th><span class="th-label" title="Was ≥5% above daily 100 SMA in last ~4 weeks">Was high</span><label class="chk-filter"><input type="checkbox" data-check="wasHigherRecently" /></label></th>
+              <th><span class="th-label" title="Hammer candle on latest bar">Hammer</span><label class="chk-filter"><input type="checkbox" data-check="hammer" /></label></th>
+              <th><span class="th-label" title="3 consecutive up days, then 1–2 down">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="pullbackStreak" /></label></th>
+              <th><span class="th-label" title="Light volume on pullback or heavy on hammer">Vol</span><label class="chk-filter"><input type="checkbox" data-check="volumeOk" /></label></th>
+              <th><span class="th-label" title="Double bottom — emerging up through the neckline">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
+              <th><span class="th-label">Recent high</span><input class="col-filter" data-key="recentHigh" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label" title="Suggested stop — below the recent swing low">Stop</span></th>
+              <th><span class="th-label" title="Target — 1.2× the risk above entry">Target</span></th>
+              <th><span class="th-label">Signal</span><input class="col-filter" data-key="signalText" data-type="text" placeholder="Filter…" /></th>
             </tr>
           </thead>
           <tbody id="overview-body">
@@ -87,6 +93,7 @@
     </details>
   </main>
 
+  <script src="/static/store.js"></script>
   <script src="/static/overview.js"></script>
 </body>
 </html>
