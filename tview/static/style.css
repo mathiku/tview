@@ -283,7 +283,7 @@ th {
 
 .overview-main {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr;
   gap: 0.75rem;
   padding: 0.75rem;
   min-height: calc(100vh - 88px);
@@ -483,6 +483,8 @@ th {
   border-radius: 12px;
   padding: 1rem 1.1rem;
   align-self: start;
+  /* Full-width collapsible row — no reserved side column when collapsed. */
+  grid-column: 1 / -1;
 }
 
 /* Collapsible "How scanning works" panel. */
@@ -552,7 +554,7 @@ th {
 
 .watchlist-main {
   display: grid;
-  grid-template-columns: 1fr 1fr 280px;
+  grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   padding: 0.75rem;
   min-height: calc(100vh - 88px);

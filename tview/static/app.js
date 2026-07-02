@@ -111,28 +111,26 @@ function createChart(containerId) {
     wickDownColor: TV.down,
   });
 
+  // No in-chart title/last-value tags — the shared legend bar covers naming.
   const ema10 = chart.addLineSeries({
     color: TV.ema10,
     lineWidth: 1,
-    title: "EMA 10",
     priceLineVisible: false,
-    lastValueVisible: true,
+    lastValueVisible: false,
   });
 
   const sma100 = chart.addLineSeries({
     color: TV.sma100,
     lineWidth: 1,
-    title: "SMA 100",
     priceLineVisible: false,
-    lastValueVisible: true,
+    lastValueVisible: false,
   });
 
   const sma200 = chart.addLineSeries({
     color: TV.sma200,
     lineWidth: 1,
-    title: "SMA 200",
     priceLineVisible: false,
-    lastValueVisible: true,
+    lastValueVisible: false,
   });
 
   const resizeObserver = new ResizeObserver(() => {
