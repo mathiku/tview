@@ -14,6 +14,13 @@ import {
 } from "./universe.js";
 import { loadPinned, lookupName } from "./pinned.js";
 import { latestIndicators } from "./indicators.js";
+import { sessionKey } from "./market.js";
+import {
+  readHistory,
+  writeHistory,
+  readOverviewSnapshot,
+  writeOverviewSnapshot,
+} from "./data/cache.js";
 
 export { BIG_STOCKS as TOP_STOCKS };
 
@@ -140,10 +147,13 @@ export async function fetchSymbolMeta(symbol) {
   };
 }
 
-export async function fetchDailyRows(symbol, { period2 = Math.floor(Date.now() / 1000) } = {}) {
+export async function fetchDailyRows(
+  symbol,
+  { period1 = defaultPeriod1(), period2 = Math.floor(Date.now() / 1000) } = {}
+) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?interval=1d&period1=${defaultPeriod1()}&period2=${period2}&includePrePost=false`;
+    `?interval=1d&period1=${period1}&period2=${period2}&includePrePost=false`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0" },
@@ -502,19 +512,69 @@ export function longSignal(comparison) {
   return { above, total, label };
 }
 
+// Per-symbol analysis cache, keyed by trading session so a symbol is computed at
+// most once per completed session. Bounded to keep memory flat on small hosts.
 const cache = new Map();
-const overviewCache = { at: 0, payload: null, universeKey: null };
-const CACHE_MS = 30_000;
+const MEM_CACHE_MAX = 400;
 const FETCH_CONCURRENCY = 6;
+
+// In-memory mirror of the disk overview snapshot { sessionKey, payload }, plus a
+// guard so only one background refresh runs at a time (stale-while-revalidate).
+let overviewSnapshot = null;
+let overviewSnapshotLoaded = false;
+let overviewRefreshing = false;
 
 let activeUniverse = [];
 let activeUniverseKey = "";
 let pinnedSymbolsCache = new Set();
 
+function setMem(symbol, entry) {
+  cache.set(symbol, entry);
+  if (cache.size > MEM_CACHE_MAX) {
+    // Map preserves insertion order → evict the oldest entry.
+    cache.delete(cache.keys().next().value);
+  }
+}
+
+/** Mark the current overview stale so the next request revalidates in the background. */
 export function clearOverviewCache() {
-  overviewCache.at = 0;
-  overviewCache.payload = null;
-  overviewCache.universeKey = null;
+  if (overviewSnapshot) overviewSnapshot = { ...overviewSnapshot, sessionKey: "__stale__" };
+}
+
+/** Merge freshly fetched bars into cached history (new bars override the last, possibly partial, bar). */
+function mergeRows(oldRows, newRows) {
+  const byTime = new Map(oldRows.map((r) => [r.time, r]));
+  for (const r of newRows) byTime.set(r.time, r);
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Load a symbol's daily history from disk, updating incrementally: only bars
+ * since the last cached date are fetched. Falls back to cached rows if a refresh
+ * fetch fails, so a Yahoo hiccup never blanks the scan.
+ */
+async function loadHistory(symbol) {
+  const cached = await readHistory(symbol);
+  if (cached?.length) {
+    const lastTime = cached[cached.length - 1].time;
+    // Re-fetch a small tail so the last (possibly partial) bar is finalized.
+    const period1 = lastTime - 5 * 86400;
+    try {
+      const fresh = await fetchDailyRows(symbol, { period1 });
+      if (fresh.length) {
+        const merged = mergeRows(cached, fresh);
+        await writeHistory(symbol, merged);
+        return merged;
+      }
+    } catch (err) {
+      console.error(`Incremental fetch failed for ${symbol}, using cache:`, err.message);
+    }
+    return cached;
+  }
+
+  const rows = await fetchDailyRows(symbol); // full history on first sight
+  await writeHistory(symbol, rows);
+  return rows;
 }
 
 export async function buildScanUniverse() {
@@ -586,36 +646,30 @@ async function mapPool(items, concurrency, fn) {
   return results.filter(Boolean);
 }
 
-async function loadStockAnalysis(symbol) {
-  const now = Date.now();
+async function loadStockAnalysis(symbol, session) {
   const cached = cache.get(symbol);
-  if (cached && now - cached.at < CACHE_MS) {
-    return {
-      comparison: cached.comparison,
-      signal: cached.signal,
-    };
+  if (cached?.signal && cached.session === session) {
+    return { comparison: cached.comparison, signal: cached.signal };
   }
 
-  const dailyRows = await fetchDailyRows(symbol);
+  const dailyRows = cached?.dailyRows && cached.session === session
+    ? cached.dailyRows
+    : await loadHistory(symbol);
   const comparison = buildComparison(dailyRows);
   const signal = scorePullback(dailyRows, comparison);
 
-  cache.set(symbol, {
-    at: now,
-    comparison,
-    dailyRows,
-    signal,
-  });
-
+  setMem(symbol, { ...cached, session, comparison, dailyRows, signal });
   return { comparison, signal };
 }
 
 export async function getPayload(symbol) {
-  const now = Date.now();
+  const session = sessionKey();
   const cached = cache.get(symbol);
-  if (cached?.payload && now - cached.at < CACHE_MS) return cached.payload;
+  if (cached?.payload && cached.session === session) return cached.payload;
 
-  const dailyRows = cached?.dailyRows ?? (await fetchDailyRows(symbol));
+  const dailyRows = cached?.dailyRows && cached.session === session
+    ? cached.dailyRows
+    : await loadHistory(symbol);
   const comparison = buildComparison(dailyRows);
   const charts = {};
 
@@ -632,29 +686,22 @@ export async function getPayload(symbol) {
     symbol,
     name: stock?.name ?? symbol,
     updated_at: new Date().toISOString(),
+    asOf: session,
     charts,
     comparison,
   };
 
-  cache.set(symbol, { at: now, comparison, dailyRows, payload });
+  setMem(symbol, { ...cached, session, comparison, dailyRows, payload });
   return payload;
 }
 
-export async function getOverview() {
-  const now = Date.now();
+/** Scan the whole universe for one session and persist the snapshot. */
+async function refreshOverview(session) {
   const scanMeta = await buildScanUniverse();
   const { universe, pinnedCount, randomCount, poolSize } = scanMeta;
 
-  if (
-    overviewCache.payload &&
-    now - overviewCache.at < CACHE_MS &&
-    overviewCache.universeKey === activeUniverseKey
-  ) {
-    return overviewCache.payload;
-  }
-
   const stocks = await mapPool(universe, FETCH_CONCURRENCY, async (stock) => {
-    const { comparison, signal } = await loadStockAnalysis(stock.symbol);
+    const { comparison, signal } = await loadStockAnalysis(stock.symbol, session);
     return {
       symbol: stock.symbol,
       name: stock.name,
@@ -678,6 +725,7 @@ export async function getOverview() {
 
   const payload = {
     updated_at: new Date().toISOString(),
+    asOf: session,
     total: stocks.length,
     scanned: universe.length,
     pinnedCount,
@@ -686,10 +734,46 @@ export async function getOverview() {
     stocks,
   };
 
-  overviewCache.at = now;
-  overviewCache.payload = payload;
-  overviewCache.universeKey = activeUniverseKey;
-  return payload;
+  const snapshot = { sessionKey: session, payload };
+  overviewSnapshot = snapshot;
+  await writeOverviewSnapshot(session, payload);
+  return snapshot;
+}
+
+/**
+ * Serve the cached overview for the current session; recompute at most once per
+ * completed session. Nights, weekends, and holidays reuse the last snapshot with
+ * zero fetching. When a new session appears we return the stale snapshot
+ * immediately and revalidate in the background (stale-while-revalidate).
+ */
+export async function getOverview() {
+  const session = sessionKey();
+
+  if (!overviewSnapshotLoaded) {
+    overviewSnapshot = await readOverviewSnapshot();
+    overviewSnapshotLoaded = true;
+  }
+
+  if (overviewSnapshot) {
+    if (overviewSnapshot.sessionKey !== session && !overviewRefreshing) {
+      overviewRefreshing = true;
+      refreshOverview(session)
+        .catch((err) => console.error("Overview refresh failed:", err.message))
+        .finally(() => {
+          overviewRefreshing = false;
+        });
+    }
+    return overviewSnapshot.payload;
+  }
+
+  // No snapshot at all (fresh install, nothing committed) → compute synchronously.
+  overviewRefreshing = true;
+  try {
+    const snapshot = await refreshOverview(session);
+    return snapshot.payload;
+  } finally {
+    overviewRefreshing = false;
+  }
 }
 
 export async function getStocksForPicker() {

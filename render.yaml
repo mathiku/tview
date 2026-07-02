@@ -11,3 +11,6 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Random symbols added to the daily scan. Lower = leaner per-session compute.
+      - key: SCAN_COUNT
+        value: "30"

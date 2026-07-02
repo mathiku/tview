@@ -2,3 +2,7 @@ node_modules/
 .venv/
 dashboard-screenshot.png
 .env
+
+# Runtime per-symbol history cache (rebuilt on demand). The overview.json seed
+# snapshot in data/cache/ is committed intentionally.
+data/cache/history/

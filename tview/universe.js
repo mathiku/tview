@@ -198,7 +198,9 @@ export const BIG_STOCKS = [
 
 export const BIG_STOCK_BY_SYMBOL = new Map(BIG_STOCKS.map((s) => [s.symbol, s]));
 
-export const RANDOM_SCAN_COUNT = 55;
+// How many random symbols to add to the daily scan. Lower it on small hosts via
+// the SCAN_COUNT env var to bound per-session compute (e.g. SCAN_COUNT=20).
+export const RANDOM_SCAN_COUNT = Number(process.env.SCAN_COUNT) || 55;
 
 export function dailySeed() {
   const d = new Date();
