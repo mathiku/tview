@@ -7,8 +7,9 @@ function fmtMoney(value) {
 
 function fmtPct(value) {
   if (value == null) return "—";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(1)}%`;
+  const rounded = Math.round(value);
+  const sign = rounded > 0 ? "+" : "";
+  return `${sign}${rounded}%`;
 }
 
 function pctClass(value) {
