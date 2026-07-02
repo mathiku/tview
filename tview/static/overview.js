@@ -76,10 +76,14 @@ function renderPatternChecks(signal) {
 
 function levelCells(signal) {
   const lv = signal.levels;
-  if (!lv) return `<td class="lvl">—</td><td class="lvl">—</td>`;
+  if (!lv) return `<td class="lvl">—</td><td class="lvl">—</td><td class="lvl">—</td>`;
   const stopTitle = `Stop ${fmtMoney(lv.stop)} (−${lv.riskPct}%)`;
-  const tgtTitle = `Target ${fmtMoney(lv.target)} (+${lv.rewardPct}%, ${lv.rr}× risk)`;
-  return `<td class="lvl lvl-stop" title="${stopTitle}">${fmtMoney(lv.stop)}</td><td class="lvl lvl-target" title="${tgtTitle}">${fmtMoney(lv.target)}</td>`;
+  const tgtTitle = `Target ${fmtMoney(lv.target)} (${lv.rr}× risk)`;
+  return (
+    `<td class="lvl lvl-stop" title="${stopTitle}">${fmtMoney(lv.stop)}</td>` +
+    `<td class="lvl lvl-target" title="${tgtTitle}">${fmtMoney(lv.target)}</td>` +
+    `<td class="lvl lvl-gain" title="Gain if the target is hit">+${lv.rewardPct.toFixed(1)}%</td>`
+  );
 }
 
 function renderRow(stock) {
@@ -150,6 +154,7 @@ function passesFilters(stock, f) {
     m200: c["1mo"].vs_sma200_pct,
     smas: s.bull.above,
     recentHigh: s.maxRecentAbove100,
+    gain: s.levels?.rewardPct,
   };
   for (const k in nums) {
     if (f[k] != null && (nums[k] == null || nums[k] < f[k])) return false;
@@ -161,7 +166,7 @@ function passesFilters(stock, f) {
       return false;
     }
   }
-  if (f.signalText && !(s.label || "").toLowerCase().includes(f.signalText.toLowerCase())) {
+  if (f.signal && signalClass(s.label) !== f.signal) {
     return false;
   }
 
@@ -184,8 +189,7 @@ function passesFilters(stock, f) {
 
 function render() {
   const f = Store.getFilters();
-  // Watchlist rows always show; filters narrow the random scan.
-  const rows = allStocks.filter((s) => s.pinned || passesFilters(s, f));
+  const rows = allStocks.filter((s) => passesFilters(s, f));
   document.getElementById("overview-body").innerHTML = rows.map(renderRow).join("");
   wireRows();
 
@@ -260,14 +264,16 @@ function wireFilters() {
     const k = inp.dataset.key;
     const isNum = inp.dataset.type === "num";
     if (filters[k] != null) inp.value = filters[k];
-    inp.addEventListener("input", () => {
+    const onChange = () => {
       const f = Store.getFilters();
-      const v = inp.value.trim();
+      const v = String(inp.value).trim();
       if (v === "") delete f[k];
       else f[k] = isNum ? Number(v) : v;
       Store.setFilters(f);
       render();
-    });
+    };
+    inp.addEventListener("input", onChange); // text/number
+    inp.addEventListener("change", onChange); // <select>
   });
 
   // "Only ✓" checkboxes under the boolean columns.

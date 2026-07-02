@@ -40,7 +40,7 @@
               <th colspan="9"></th>
               <th colspan="3" class="group-head">Pullback</th>
               <th colspan="4" class="group-head pattern-head">Patterns</th>
-              <th colspan="4"></th>
+              <th colspan="5"></th>
             </tr>
             <tr class="head-row">
               <th class="col-stock"><span class="th-label">Stock</span><input class="col-filter" data-key="text" data-type="text" placeholder="Filter…" /></th>
@@ -62,7 +62,16 @@
               <th><span class="th-label">Recent high</span><input class="col-filter" data-key="recentHigh" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" title="Suggested stop — below the recent swing low">Stop</span></th>
               <th><span class="th-label" title="Target — 1.2× the risk above entry">Target</span></th>
-              <th><span class="th-label">Signal</span><input class="col-filter" data-key="signalText" data-type="text" placeholder="Filter…" /></th>
+              <th><span class="th-label" title="Gain if the target is hit">Gain</span><input class="col-filter" data-key="gain" data-type="num" placeholder="≥" /></th>
+              <th><span class="th-label">Signal</span><select class="col-filter" data-key="signal">
+                <option value="">All</option>
+                <option value="pullback">Pullback</option>
+                <option value="near-100">Near 100</option>
+                <option value="trend-ok">Trend OK</option>
+                <option value="extended">Extended</option>
+                <option value="mixed">Mixed</option>
+                <option value="weak">Weak trend</option>
+              </select></th>
             </tr>
           </thead>
           <tbody id="overview-body">
