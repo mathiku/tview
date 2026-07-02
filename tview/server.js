@@ -21,7 +21,14 @@ const PORT = process.env.PORT ?? 5050;
 const HOST = process.env.BIND_HOST ?? "0.0.0.0";
 
 app.use(express.json());
-app.use("/static", express.static(path.join(__dirname, "static")));
+// Always revalidate static assets so a redeploy is picked up without a hard
+// refresh (304 when unchanged via ETag, fresh 200 when the file changed).
+app.use(
+  "/static",
+  express.static(path.join(__dirname, "static"), {
+    setHeaders: (res) => res.setHeader("Cache-Control", "no-cache"),
+  })
+);
 
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "overview.html"));
