@@ -1137,3 +1137,89 @@ select.col-filter {
 
 /* The `hidden` attribute must beat `.panel { display: flex }`. */
 [hidden] { display: none !important; }
+
+/* ---- Backtest: mode tabs + custom-rule editor ---- */
+.bt-modes {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.9rem;
+}
+.bt-mode-tab {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 8px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bt-mode-tab:hover { color: var(--text); }
+.bt-mode-tab.active {
+  color: #cfe4ff;
+  border-color: var(--sma100);
+  background: #152033;
+}
+
+.bt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+.bt-row + .bt-row { margin-top: 0.9rem; }
+
+.bt-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+.bt-field-rule { width: 100%; }
+.bt-rule-input {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem !important;
+}
+
+.bt-safety {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.bt-safety-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding-bottom: 0.5rem;
+}
+.bt-safety .bt-field input { min-width: 4.5rem; }
+
+.bt-help {
+  width: 100%;
+  margin-top: 0.9rem;
+  font-size: 0.82rem;
+}
+.bt-help > summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0.4rem 0;
+}
+.bt-help-body {
+  border-top: 1px solid var(--border);
+  padding-top: 0.6rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.bt-help-body p { margin: 0 0 0.5rem; }
+.bt-help-body code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.05rem 0.35rem;
+  color: #cfe4ff;
+  font-size: 0.8rem;
+}
+.bt-help-eg code { color: #86efac; }

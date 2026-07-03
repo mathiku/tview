@@ -13,7 +13,7 @@ import {
   getStocksForPicker,
   resolveSymbol,
 } from "./stocks.js";
-import { runSymbolBacktest } from "./backtest.js";
+import { runSymbolBacktest, runCustomBacktest } from "./backtest.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -135,21 +135,27 @@ app.get("/api/stock", async (req, res) => {
 app.get("/api/backtest", async (req, res) => {
   try {
     const q = req.query;
-    const result = await runSymbolBacktest({
+    const common = {
       symbol: q.symbol,
       startDate: q.start,
       endDate: q.end,
       direction: q.direction,
       initialCapital: q.capital,
       positionSizePct: q.size,
-      requirePattern: q.requirePattern === "true",
       stopLossPct: q.stop,
       takeProfitPct: q.target,
       maxHoldDays: q.hold,
-      stopOn200Sma: q.sma200 !== "false",
-      rsiMax: q.rsiMax,
-      adxMin: q.adxMin,
-    });
+    };
+    const result =
+      q.mode === "custom"
+        ? await runCustomBacktest({ ...common, entry: q.entry, exit: q.exit })
+        : await runSymbolBacktest({
+            ...common,
+            requirePattern: q.requirePattern === "true",
+            stopOn200Sma: q.sma200 !== "false",
+            rsiMax: q.rsiMax,
+            adxMin: q.adxMin,
+          });
     res.json(result);
   } catch (err) {
     console.error(err);

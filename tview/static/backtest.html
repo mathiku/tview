@@ -26,64 +26,108 @@
 
   <main class="backtest-main">
     <section class="panel bt-form-panel">
+      <div class="bt-modes" id="bt-modes">
+        <button type="button" class="bt-mode-tab active" data-mode="builtin">Built-in strategy</button>
+        <button type="button" class="bt-mode-tab" data-mode="custom">Custom rules</button>
+      </div>
+
       <form id="bt-form" class="bt-form">
-        <div class="bt-field bt-field-wide">
-          <label for="bt-symbol">Stock</label>
-          <input type="text" id="bt-symbol" value="AAPL" autocomplete="off" spellcheck="false" placeholder="e.g. AAPL" />
+        <div class="bt-row bt-shared">
+          <div class="bt-field bt-field-wide">
+            <label for="bt-symbol">Stock</label>
+            <input type="text" id="bt-symbol" value="AAPL" autocomplete="off" spellcheck="false" placeholder="e.g. AAPL" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-start">Start</label>
+            <input type="date" id="bt-start" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-end">End</label>
+            <input type="date" id="bt-end" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-direction">Direction</label>
+            <select id="bt-direction">
+              <option value="long" selected>Long</option>
+              <option value="short">Short</option>
+              <option value="both" data-builtin-only>Both sides</option>
+            </select>
+          </div>
+          <div class="bt-field">
+            <label for="bt-capital">Capital $</label>
+            <input type="number" id="bt-capital" value="100000" min="1000" step="1000" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-size">Position %</label>
+            <input type="number" id="bt-size" value="100" min="1" max="100" step="1" />
+          </div>
         </div>
-        <div class="bt-field">
-          <label for="bt-start">Start</label>
-          <input type="date" id="bt-start" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-end">End</label>
-          <input type="date" id="bt-end" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-direction">Direction</label>
-          <select id="bt-direction">
-            <option value="long" selected>Long only</option>
-            <option value="short">Short only</option>
-            <option value="both">Both sides</option>
-          </select>
-        </div>
-        <div class="bt-field">
-          <label for="bt-capital">Capital $</label>
-          <input type="number" id="bt-capital" value="100000" min="1000" step="1000" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-size">Position %</label>
-          <input type="number" id="bt-size" value="100" min="1" max="100" step="1" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-stop">Stop loss %</label>
-          <input type="number" id="bt-stop" value="6" min="0.5" step="0.5" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-target">Take profit %</label>
-          <input type="number" id="bt-target" value="12" min="0.5" step="0.5" />
-        </div>
-        <div class="bt-field">
-          <label for="bt-hold">Max hold (days)</label>
-          <input type="number" id="bt-hold" value="20" min="1" step="1" />
-        </div>
-        <div class="bt-field bt-field-check">
-          <label class="bt-check"><input type="checkbox" id="bt-sma200" checked /> Exit on 200 SMA break</label>
-          <label class="bt-check"><input type="checkbox" id="bt-pattern" /> Require a pattern confirm</label>
-        </div>
-        <details class="bt-advanced">
-          <summary>Advanced entry filters</summary>
-          <div class="bt-adv-grid">
-            <div class="bt-field">
-              <label for="bt-rsi">RSI max (long)</label>
-              <input type="number" id="bt-rsi" placeholder="off" min="1" max="100" step="1" />
+
+        <div class="bt-row bt-section" id="bt-builtin-section">
+          <div class="bt-field">
+            <label for="bt-stop">Stop loss %</label>
+            <input type="number" id="bt-stop" value="6" min="0.5" step="0.5" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-target">Take profit %</label>
+            <input type="number" id="bt-target" value="12" min="0.5" step="0.5" />
+          </div>
+          <div class="bt-field">
+            <label for="bt-hold">Max hold (days)</label>
+            <input type="number" id="bt-hold" value="20" min="1" step="1" />
+          </div>
+          <div class="bt-field bt-field-check">
+            <label class="bt-check"><input type="checkbox" id="bt-sma200" checked /> Exit on 200 SMA break</label>
+            <label class="bt-check"><input type="checkbox" id="bt-pattern" /> Require a pattern confirm</label>
+          </div>
+          <details class="bt-advanced">
+            <summary>Advanced entry filters</summary>
+            <div class="bt-adv-grid">
+              <div class="bt-field">
+                <label for="bt-rsi">RSI max (long)</label>
+                <input type="number" id="bt-rsi" placeholder="off" min="1" max="100" step="1" />
+              </div>
+              <div class="bt-field">
+                <label for="bt-adx">ADX min</label>
+                <input type="number" id="bt-adx" placeholder="off" min="1" max="100" step="1" />
+              </div>
             </div>
-            <div class="bt-field">
-              <label for="bt-adx">ADX min</label>
-              <input type="number" id="bt-adx" placeholder="off" min="1" max="100" step="1" />
+          </details>
+        </div>
+
+        <div class="bt-row bt-section" id="bt-custom-section" hidden>
+          <div class="bt-rules">
+            <div class="bt-field bt-field-rule">
+              <label for="bt-entry">Entry rule — buy when this is true</label>
+              <input type="text" id="bt-entry" class="bt-rule-input" spellcheck="false" value="rsi < 35 and close < sma100" />
+            </div>
+            <div class="bt-field bt-field-rule">
+              <label for="bt-exit">Exit rule — sell when this is true</label>
+              <input type="text" id="bt-exit" class="bt-rule-input" spellcheck="false" value="profit >= 8 or profit <= -5 or held > 15" />
+            </div>
+            <div class="bt-safety">
+              <span class="bt-safety-label">Safety exits (optional)</span>
+              <div class="bt-field"><label for="bt-c-stop">Stop %</label><input type="number" id="bt-c-stop" placeholder="off" min="0.5" step="0.5" /></div>
+              <div class="bt-field"><label for="bt-c-target">Target %</label><input type="number" id="bt-c-target" placeholder="off" min="0.5" step="0.5" /></div>
+              <div class="bt-field"><label for="bt-c-hold">Max hold</label><input type="number" id="bt-c-hold" placeholder="off" min="1" step="1" /></div>
             </div>
           </div>
-        </details>
+          <details class="bt-help">
+            <summary>Rule reference — variables, functions &amp; examples</summary>
+            <div class="bt-help-body">
+              <p><strong>Price:</strong> <code>close open high low volume</code></p>
+              <p><strong>Indicators:</strong> <code>sma20 sma50 sma100 sma200 ema10 ema21 rsi adx atr percentb</code></p>
+              <p><strong>Exit-only:</strong> <code>profit</code> (% P/L of the open trade) · <code>held</code> / <code>bars</code> (days held) · <code>entryprice</code></p>
+              <p><strong>Operators:</strong> <code>and or not</code> · <code>&lt; &gt; &lt;= &gt;= == !=</code> · <code>+ - * /</code> · <code>( )</code> · <code>10%</code></p>
+              <p><strong>Functions:</strong> <code>crossabove(a, b)</code> <code>crossbelow(a, b)</code> <code>min max abs</code></p>
+              <p class="bt-help-eg"><strong>Examples</strong><br />
+                Entry: <code>rsi &lt; 30 and close &gt; sma200</code><br />
+                Entry: <code>crossabove(close, sma50)</code><br />
+                Exit: <code>profit &gt;= 10% or crossbelow(close, sma20)</code></p>
+            </div>
+          </details>
+        </div>
+
         <button type="submit" id="bt-run" class="bt-run">Run backtest</button>
       </form>
     </section>

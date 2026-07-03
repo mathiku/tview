@@ -152,12 +152,21 @@ function renderTrades(trades) {
     .join("");
 }
 
+function resultSub(data) {
+  const range = `${data.startDate} → ${data.endDate}`;
+  if (data.mode === "custom") {
+    return `${range} · entry: ${data.config.entry} · exit: ${data.config.exit}`;
+  }
+  return `${range} · stop ${data.config.stopLossPct}% · target ${data.config.takeProfitPct}% · max hold ${data.config.maxHoldDays}d`;
+}
+
 function renderResult(data) {
   el("bt-empty").hidden = true;
   el("bt-results").hidden = false;
-  el("bt-result-title").textContent = `${data.symbol} · ${data.direction === "both" ? "long + short" : data.direction}`;
-  el("bt-result-sub").textContent =
-    `${data.startDate} → ${data.endDate} · stop ${data.config.stopLossPct}% · target ${data.config.takeProfitPct}% · max hold ${data.config.maxHoldDays}d`;
+  const modeTag = data.mode === "custom" ? " · custom rules" : "";
+  el("bt-result-title").textContent =
+    `${data.symbol} · ${data.direction === "both" ? "long + short" : data.direction}${modeTag}`;
+  el("bt-result-sub").textContent = resultSub(data);
 
   renderTiles(data.metrics);
   renderTrades(data.trades);
@@ -180,6 +189,8 @@ function renderResult(data) {
   );
 }
 
+let mode = "builtin";
+
 function buildQuery() {
   const q = new URLSearchParams();
   q.set("symbol", el("bt-symbol").value.trim());
@@ -188,6 +199,18 @@ function buildQuery() {
   q.set("direction", el("bt-direction").value);
   q.set("capital", el("bt-capital").value || "100000");
   q.set("size", el("bt-size").value || "100");
+
+  if (mode === "custom") {
+    q.set("mode", "custom");
+    q.set("entry", el("bt-entry").value.trim());
+    q.set("exit", el("bt-exit").value.trim());
+    // Safety exits are optional — only send when the user set them.
+    if (el("bt-c-stop").value) q.set("stop", el("bt-c-stop").value);
+    if (el("bt-c-target").value) q.set("target", el("bt-c-target").value);
+    if (el("bt-c-hold").value) q.set("hold", el("bt-c-hold").value);
+    return q;
+  }
+
   q.set("stop", el("bt-stop").value || "6");
   q.set("target", el("bt-target").value || "12");
   q.set("hold", el("bt-hold").value || "20");
@@ -198,11 +221,28 @@ function buildQuery() {
   return q;
 }
 
+function setMode(next) {
+  mode = next;
+  document.querySelectorAll(".bt-mode-tab").forEach((t) => t.classList.toggle("active", t.dataset.mode === next));
+  el("bt-builtin-section").hidden = next !== "builtin";
+  el("bt-custom-section").hidden = next !== "custom";
+  // "Both sides" only applies to the built-in strategy.
+  const both = el("bt-direction").querySelector('option[value="both"]');
+  if (both) {
+    both.disabled = next === "custom";
+    if (next === "custom" && el("bt-direction").value === "both") el("bt-direction").value = "long";
+  }
+}
+
 async function runBacktest(e) {
   e.preventDefault();
   const symbol = el("bt-symbol").value.trim();
   if (!symbol) {
     setStatus("Enter a stock", "error");
+    return;
+  }
+  if (mode === "custom" && (!el("bt-entry").value.trim() || !el("bt-exit").value.trim())) {
+    setStatus("Enter both an entry and an exit rule", "error");
     return;
   }
   const btn = el("bt-run");
@@ -232,6 +272,9 @@ function boot() {
   el("bt-end").value = isoDaysAgo(0);
   el("bt-start").value = isoDaysAgo(365 * 3);
   el("bt-form").addEventListener("submit", runBacktest);
+  document.querySelectorAll(".bt-mode-tab").forEach((tab) => {
+    tab.addEventListener("click", () => setMode(tab.dataset.mode));
+  });
 }
 
 boot();
