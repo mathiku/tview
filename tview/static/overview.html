@@ -56,9 +56,9 @@
               <th><span class="th-label" data-sort="at100Sma" title="Daily within ±3% of 100 SMA">At 100</span><label class="chk-filter"><input type="checkbox" data-check="at100Sma" /></label></th>
               <th><span class="th-label" data-sort="wasHigherRecently" title="Was ≥5% above daily 100 SMA in last ~4 weeks">Was high</span><label class="chk-filter"><input type="checkbox" data-check="wasHigherRecently" /></label></th>
               <th><span class="th-label" data-sort="hammer" title="Hammer candle on latest bar">Hammer</span><label class="chk-filter"><input type="checkbox" data-check="hammer" /></label></th>
-              <th><span class="th-label" data-sort="pullbackStreak" title="3 consecutive up days, then 1–2 down">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="pullbackStreak" /></label></th>
+              <th><span class="th-label" data-sort="pullbackStreak" title="3↑↓ — three up days then 1–2 down days: an orderly pullback into the moving average">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="pullbackStreak" /></label></th>
               <th><span class="th-label" data-sort="volumeOk" title="Light volume on pullback or heavy on hammer">Vol</span><label class="chk-filter"><input type="checkbox" data-check="volumeOk" /></label></th>
-              <th><span class="th-label" data-sort="doubleBottom" title="Double bottom — emerging up through the neckline">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
+              <th><span class="th-label" data-sort="doubleBottom" title="2B — double bottom (&quot;W&quot;): two matching lows, now climbing back up through the middle peak">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
               <th><span class="th-label" data-sort="recentHigh">Recent high</span><input class="col-filter" data-key="recentHigh" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="stop" title="Suggested stop — below the recent swing low">Stop</span></th>
               <th><span class="th-label" data-sort="target" title="Target — 1.2× the risk above entry">Target</span></th>
@@ -82,22 +82,47 @@
     </section>
 
     <details class="legend-panel legend-details">
-      <summary>How scanning works</summary>
-      <p><strong>★ Pinned</strong> stocks always appear in the overview (manage on the Watchlist page).</p>
-      <p><strong>Random large caps</strong> fill out the rest of today's scan (~55/day from a ~170-stock pool).</p>
-      <p>A <strong>watchlist entry</strong> needs all three pullback checks — uptrend intact, at the 100 SMA, and recently extended.</p>
+      <summary>What every column means</summary>
+      <p>The scan looks for healthy uptrends that have <strong>dipped back to the 100-day moving average</strong> — a spot where a rising stock often finds support and bounces. A <strong>moving average (SMA)</strong> is just the average closing price over the last N bars; the 100-day line smooths out the noise and tends to act like a floor in an uptrend.</p>
+      <p><strong>★ Pinned</strong> stocks always appear in the overview (manage on the Watchlist page). <strong>Random large caps</strong> fill out the rest of today's scan (~55/day from a ~170-stock pool).</p>
+
+      <h3>The SMA columns (D / W / M · 100 / 200)</h3>
+      <p>How far price sits <em>above</em> (green, +%) or <em>below</em> (red, −%) a moving average, on Daily, Weekly and Monthly bars. Above the line = uptrend on that timeframe. <strong>SMAs+</strong> counts how many of the six lines price is above (6/6 = strongest).</p>
+
+      <h3>Watchlist checks</h3>
+      <p>A stock earns a <strong>watchlist entry</strong> only when all three are ✓ — the trend is intact, it has pulled back to the 100 SMA, and it was recently higher (so this is a genuine dip, not a stock stuck flat on the line).</p>
       <ul class="check-legend">
-        <li><span class="check ok">✓</span> <strong>Trend OK</strong> — weekly &amp; monthly above 200 SMA, or 5+/6 SMAs bullish</li>
-        <li><span class="check ok">✓</span> <strong>At 100</strong> — daily price within ±3% of the 100 SMA</li>
-        <li><span class="check ok">✓</span> <strong>Was high</strong> — was ≥5% above daily 100 SMA within the last ~4 weeks</li>
+        <li><span class="check ok">✓</span> <strong>Trend OK</strong> — weekly &amp; monthly above the 200 SMA, or 5+/6 SMAs bullish (the bigger-picture uptrend is healthy)</li>
+        <li><span class="check ok">✓</span> <strong>At 100</strong> — daily price is within ±3% of the 100 SMA (it has come back to support)</li>
+        <li><span class="check ok">✓</span> <strong>Was high</strong> — was ≥5% above the daily 100 SMA within the last ~4 weeks (it dropped <em>into</em> support rather than sitting on it)</li>
       </ul>
 
       <h3>Pattern confirms</h3>
-      <p>Extra daily-bar signals when a stock is at support. More ✓ = higher rank within the watchlist.</p>
+      <p>Extra clues from the recent daily candles that the dip may be ending and buyers are stepping in. More ✓ = higher rank within the watchlist — none of these are required.</p>
       <ul class="check-legend">
-        <li><span class="check ok">✓</span> <strong>Hammer</strong> — long lower wick, small body (rejection of lows)</li>
-        <li><span class="check ok">✓</span> <strong>3↑↓</strong> — 3 up days, then 1–2 down into the SMA</li>
-        <li><span class="check ok">✓</span> <strong>Vol</strong> — down-day volume lighter than the up leg, or above-average on a hammer</li>
+        <li><span class="check ok">✓</span> <strong>Hammer</strong> — a candle with a long lower wick and small body: price sold off during the day but closed back near the top, rejecting the lows</li>
+        <li><span class="check ok">✓</span> <strong>3↑↓</strong> — three up days followed by 1–2 down days: a short, orderly pullback into the moving average rather than a collapse</li>
+        <li><span class="check ok">✓</span> <strong>Vol</strong> — volume confirms: the down days traded lighter than the prior up-leg (weak selling), or a hammer printed on above-average volume (strong buying)</li>
+        <li><span class="check ok">✓</span> <strong>2B</strong> — a <strong>double bottom</strong>, the "W" shape: price bottomed, bounced, then dropped to about the <em>same</em> low a second time and is now climbing back up through the middle peak (the "neckline"). Two failed attempts to push lower is a classic sign the downtrend is exhausting.</li>
+      </ul>
+
+      <h3>Suggested levels (Stop · Target · Gain)</h3>
+      <p>A rough trade plan if you bought near the current price — not advice, just the arithmetic.</p>
+      <ul class="check-legend">
+        <li><strong>Stop</strong> — where you'd cut the loss, placed just below the recent swing low. If price falls here, the setup has failed.</li>
+        <li><strong>Target</strong> — a profit goal set at 1.2× the distance to the stop (so the potential reward is bigger than the risk).</li>
+        <li><strong>Gain</strong> — the % you'd make from the current price if the target is hit.</li>
+      </ul>
+
+      <h3>The Signal column</h3>
+      <p>A one-glance verdict for each stock, best setups first. The suffix after a "·" names whichever pattern confirmed (e.g. <em>Pullback · hammer</em>).</p>
+      <ul class="check-legend signal-legend">
+        <li><span class="signal-pill pullback">Pullback</span> Passed all three watchlist checks — a real dip to the 100 SMA in a healthy uptrend. The setup we're hunting for.</li>
+        <li><span class="signal-pill near-100">Near 100</span> At the 100 SMA in a good trend, but it never stretched high first — sitting on support rather than dipping into it.</li>
+        <li><span class="signal-pill trend-ok">Trend OK</span> Uptrend is intact and it was recently extended, but price isn't back at the 100 SMA yet. One to watch.</li>
+        <li><span class="signal-pill extended">Extended</span> Trend is mostly bullish but price is still well above the 100 SMA — no pullback to buy.</li>
+        <li><span class="signal-pill mixed">Mixed</span> Some moving averages bullish, some not — no clear trend.</li>
+        <li><span class="signal-pill weak">Weak trend</span> Mostly below its moving averages. Not a candidate.</li>
       </ul>
     </details>
   </main>

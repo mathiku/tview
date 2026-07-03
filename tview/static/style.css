@@ -231,6 +231,18 @@ a#tv-attr-logo {
   flex: 1;
   min-height: 0;
   background: #000000;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Double-bottom bounding box drawn over the daily chart. */
+.signal-box {
+  position: absolute;
+  pointer-events: none;
+  border: 1px dashed #22d3ee;
+  background: rgba(34, 211, 238, 0.08);
+  border-radius: 3px;
+  z-index: 2;
 }
 
 /* Single shared legend bar above the charts. */
@@ -408,6 +420,16 @@ th {
   display: flex;
   align-items: flex-start;
   gap: 0.45rem;
+}
+
+/* Signal-column legend: keep each pill on its own line, not stretched. */
+.signal-legend li {
+  gap: 0.55rem;
+  line-height: 1.5;
+}
+.signal-legend .signal-pill {
+  flex: none;
+  margin-top: 0.05rem;
 }
 
 .legend-note {

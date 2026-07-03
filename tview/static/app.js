@@ -135,15 +135,54 @@ function createChart(containerId) {
     lastValueVisible: false,
   });
 
+  // Overlay for the double-bottom bounding box — a positioned DOM element the
+  // lightweight-charts canvas can't draw natively (v4 has no rectangle shape).
+  container.style.position = "relative";
+  const box = document.createElement("div");
+  box.className = "signal-box";
+  box.style.display = "none";
+  container.appendChild(box);
+
+  const s = { chart, candles, volume, ema10, sma100, sma200, container, box };
+  s.priceLines = [];
+  s.boxData = null;
+
+  // Re-place the box in pixel space whenever the visible range or size changes.
+  s.reposition = () => {
+    const d = s.boxData;
+    if (!d) {
+      box.style.display = "none";
+      return;
+    }
+    const ts = chart.timeScale();
+    const x1 = ts.timeToCoordinate(d.low1Time);
+    const x2 = ts.timeToCoordinate(d.low2Time);
+    const yTop = candles.priceToCoordinate(d.top);
+    const yBottom = candles.priceToCoordinate(d.bottom);
+    if (x1 == null || x2 == null || yTop == null || yBottom == null) {
+      box.style.display = "none";
+      return;
+    }
+    const left = Math.min(x1, x2);
+    const top = Math.min(yTop, yBottom);
+    box.style.display = "block";
+    box.style.left = `${left}px`;
+    box.style.width = `${Math.max(Math.abs(x2 - x1), 2)}px`;
+    box.style.top = `${top}px`;
+    box.style.height = `${Math.max(Math.abs(yBottom - yTop), 2)}px`;
+  };
+  chart.timeScale().subscribeVisibleLogicalRangeChange(s.reposition);
+
   const resizeObserver = new ResizeObserver(() => {
     chart.applyOptions({
       width: container.clientWidth,
       height: container.clientHeight,
     });
+    s.reposition();
   });
   resizeObserver.observe(container);
 
-  return { chart, candles, volume, ema10, sma100, sma200 };
+  return s;
 }
 
 function initCharts() {
@@ -153,30 +192,124 @@ function initCharts() {
   });
 }
 
-function applyDefaultVisibleRange(key, rows) {
+function applyDefaultVisibleRange(key, rows, signal) {
   if (!rows.length) return;
 
   const lastTime = rows[rows.length - 1].time;
   const firstTime = rows[0].time;
   let from = lastTime - DEFAULT_RANGES[key];
+
+  // Pull the daily view back far enough to frame a double bottom that formed
+  // before the default window — otherwise its box would sit off-screen.
+  const db = key === "1d" ? signal?.doubleBottom : null;
+  if (db?.match) from = Math.min(from, db.low1Time - 12 * SEC_DAY);
+
   if (from < firstTime) from = firstTime;
 
   charts[key].chart.timeScale().setVisibleRange({ from, to: lastTime });
 }
 
-function updateChart(key, rows) {
+const HAMMER_HL = "#fbbf24";
+const DB_HL = "#22d3ee";
+
+// Draw the daily-bar signals (hammer, double bottom, trade levels) onto a chart.
+function annotateSignals(key, rows, signal) {
+  const s = series[key];
+  s.priceLines.forEach((pl) => s.candles.removePriceLine(pl));
+  s.priceLines = [];
+
+  if (key !== "1d") {
+    s.boxData = null;
+    s.candles.setMarkers([]);
+    s.reposition();
+    return;
+  }
+
+  const db = signal?.doubleBottom;
+  const lv = signal?.levels;
+  const markers = [];
+
+  if (signal?.patterns?.hammer && rows.length) {
+    markers.push({
+      time: rows[rows.length - 1].time,
+      position: "belowBar",
+      color: HAMMER_HL,
+      shape: "arrowUp",
+      text: "Hammer",
+    });
+  }
+
+  if (db?.match) {
+    markers.push({ time: db.low1Time, position: "belowBar", color: DB_HL, shape: "circle", text: "1" });
+    markers.push({ time: db.low2Time, position: "belowBar", color: DB_HL, shape: "circle", text: "2" });
+    s.priceLines.push(
+      s.candles.createPriceLine({
+        price: db.neckline,
+        color: DB_HL,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: "neckline",
+      })
+    );
+    s.boxData = { low1Time: db.low1Time, low2Time: db.low2Time, top: db.neckline, bottom: db.lowPrice };
+  } else {
+    s.boxData = null;
+  }
+
+  if (lv) {
+    s.priceLines.push(
+      s.candles.createPriceLine({
+        price: lv.stop,
+        color: TV.down,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: "stop",
+      })
+    );
+    s.priceLines.push(
+      s.candles.createPriceLine({
+        price: lv.target,
+        color: TV.up,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: "target",
+      })
+    );
+  }
+
+  markers.sort((a, b) => a.time - b.time);
+  s.candles.setMarkers(markers);
+  s.reposition();
+}
+
+function updateChart(key, rows, signal) {
   const { candles, volume, ema10, sma100, sma200 } = series[key];
   const closes = rows.map((r) => r.close);
   const emaValues = rollingEma(closes, 10);
 
+  // Highlight the hammer candle (latest daily bar) with an amber outline.
+  const hammerTime =
+    key === "1d" && signal?.patterns?.hammer && rows.length ? rows[rows.length - 1].time : null;
+
   candles.setData(
-    rows.map((r) => ({
-      time: r.time,
-      open: r.open,
-      high: r.high,
-      low: r.low,
-      close: r.close,
-    }))
+    rows.map((r) => {
+      const bar = {
+        time: r.time,
+        open: r.open,
+        high: r.high,
+        low: r.low,
+        close: r.close,
+      };
+      if (r.time === hammerTime) {
+        bar.color = r.close >= r.open ? TV.up : TV.down;
+        bar.borderColor = HAMMER_HL;
+        bar.wickColor = HAMMER_HL;
+      }
+      return bar;
+    })
   );
 
   volume.setData(
@@ -201,7 +334,8 @@ function updateChart(key, rows) {
     rows.filter((r) => r.sma200 != null).map((r) => ({ time: r.time, value: r.sma200 }))
   );
 
-  applyDefaultVisibleRange(key, rows);
+  applyDefaultVisibleRange(key, rows, signal);
+  annotateSignals(key, rows, signal);
 }
 
 function updateTable(comparison) {
@@ -355,7 +489,7 @@ async function refresh(attempt = 0) {
     document.getElementById("last-updated").textContent =
       `Updated ${new Date(payload.updated_at).toLocaleString()}`;
 
-    INTERVALS.forEach((key) => updateChart(key, payload.charts[key].data));
+    INTERVALS.forEach((key) => updateChart(key, payload.charts[key].data, payload.signal));
     updateTable(payload.comparison);
     renderSetup(payload.signal);
     updatePinButton();
