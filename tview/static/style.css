@@ -935,3 +935,205 @@ select.col-filter {
   content: " ▴";
   color: var(--sma100);
 }
+
+/* ---- Backtest page ---- */
+.backtest-main {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.bt-form-panel {
+  padding: 1rem 1.1rem;
+}
+
+.bt-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.bt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.bt-field label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.bt-field input,
+.bt-field select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.85rem;
+  min-width: 5.5rem;
+}
+
+.bt-field-wide input {
+  min-width: 8rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.bt-field-check {
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.bt-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.bt-advanced {
+  align-self: flex-end;
+  font-size: 0.8rem;
+}
+.bt-advanced > summary {
+  cursor: pointer;
+  color: var(--muted);
+  padding: 0.45rem 0;
+}
+.bt-adv-grid {
+  display: flex;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.bt-run {
+  background: #1a3d2e;
+  color: #86efac;
+  border: 1px solid rgba(134, 239, 172, 0.35);
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bt-run:hover { background: #205037; }
+.bt-run:disabled { opacity: 0.5; cursor: default; }
+
+.bt-empty {
+  padding: 1.5rem;
+  color: var(--muted);
+}
+.bt-empty p { margin: 0 0 0.6rem; }
+
+.bt-results-panel {
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.bt-result-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.bt-result-head h2 { margin: 0; }
+
+.bt-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+.bt-tile {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.bt-tile-val {
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--text);
+}
+.bt-tile-val.positive { color: var(--positive); }
+.bt-tile-val.negative { color: var(--negative); }
+.bt-tile-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.bt-chart-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.bt-chart {
+  height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.bt-trades {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.bt-trades th {
+  text-align: right;
+  padding: 0.4rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+.bt-trades th:nth-child(-n+2),
+.bt-trades td:nth-child(-n+2) { text-align: left; }
+.bt-trades td {
+  padding: 0.4rem 0.6rem;
+  text-align: right;
+  border-bottom: 1px solid rgba(42, 47, 58, 0.5);
+}
+.bt-trades td.bt-signal { text-align: left; color: var(--muted); }
+.bt-trades .positive { color: var(--positive); }
+.bt-trades .negative { color: var(--negative); }
+
+.bt-side {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.bt-side.bt-long { background: #1a3328; color: var(--positive); }
+.bt-side.bt-short { background: #3a1d1d; color: var(--negative); }
+
+.bt-notrades {
+  text-align: center !important;
+  color: var(--muted);
+  padding: 1.2rem !important;
+}
+
+/* The `hidden` attribute must beat `.panel { display: flex }`. */
+[hidden] { display: none !important; }

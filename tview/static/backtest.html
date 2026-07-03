@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Backtest · Stock Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Backtest</h1>
+      <p class="subtitle">Run the pullback / rally strategy on one stock over a date range</p>
+    </div>
+    <div class="meta">
+      <nav class="top-nav">
+        <a href="/" class="nav-link">Overview</a>
+        <a href="/stock" class="nav-link">Charts</a>
+        <a href="/watchlist" class="nav-link">Watchlist</a>
+        <a href="/backtest" class="nav-link active">Backtest</a>
+      </nav>
+      <span id="run-status" class="badge">Ready</span>
+    </div>
+  </header>
+
+  <main class="backtest-main">
+    <section class="panel bt-form-panel">
+      <form id="bt-form" class="bt-form">
+        <div class="bt-field bt-field-wide">
+          <label for="bt-symbol">Stock</label>
+          <input type="text" id="bt-symbol" value="AAPL" autocomplete="off" spellcheck="false" placeholder="e.g. AAPL" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-start">Start</label>
+          <input type="date" id="bt-start" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-end">End</label>
+          <input type="date" id="bt-end" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-direction">Direction</label>
+          <select id="bt-direction">
+            <option value="long" selected>Long only</option>
+            <option value="short">Short only</option>
+            <option value="both">Both sides</option>
+          </select>
+        </div>
+        <div class="bt-field">
+          <label for="bt-capital">Capital $</label>
+          <input type="number" id="bt-capital" value="100000" min="1000" step="1000" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-size">Position %</label>
+          <input type="number" id="bt-size" value="100" min="1" max="100" step="1" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-stop">Stop loss %</label>
+          <input type="number" id="bt-stop" value="6" min="0.5" step="0.5" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-target">Take profit %</label>
+          <input type="number" id="bt-target" value="12" min="0.5" step="0.5" />
+        </div>
+        <div class="bt-field">
+          <label for="bt-hold">Max hold (days)</label>
+          <input type="number" id="bt-hold" value="20" min="1" step="1" />
+        </div>
+        <div class="bt-field bt-field-check">
+          <label class="bt-check"><input type="checkbox" id="bt-sma200" checked /> Exit on 200 SMA break</label>
+          <label class="bt-check"><input type="checkbox" id="bt-pattern" /> Require a pattern confirm</label>
+        </div>
+        <details class="bt-advanced">
+          <summary>Advanced entry filters</summary>
+          <div class="bt-adv-grid">
+            <div class="bt-field">
+              <label for="bt-rsi">RSI max (long)</label>
+              <input type="number" id="bt-rsi" placeholder="off" min="1" max="100" step="1" />
+            </div>
+            <div class="bt-field">
+              <label for="bt-adx">ADX min</label>
+              <input type="number" id="bt-adx" placeholder="off" min="1" max="100" step="1" />
+            </div>
+          </div>
+        </details>
+        <button type="submit" id="bt-run" class="bt-run">Run backtest</button>
+      </form>
+    </section>
+
+    <section class="panel bt-results-panel" id="bt-results" hidden>
+      <div class="bt-result-head">
+        <h2 id="bt-result-title">—</h2>
+        <span class="hint" id="bt-result-sub"></span>
+      </div>
+
+      <div class="bt-tiles" id="bt-tiles"></div>
+
+      <div class="bt-chart-block">
+        <h3>Equity curve</h3>
+        <div id="chart-equity" class="chart bt-chart"></div>
+      </div>
+
+      <div class="bt-chart-block">
+        <h3>Price &amp; trades <span class="hint">▲ entry · ▼ exit</span></h3>
+        <div id="chart-price" class="chart bt-chart"></div>
+      </div>
+
+      <div class="bt-chart-block">
+        <h3>Trades <span class="hint" id="bt-trade-count"></span></h3>
+        <div class="table-wrap">
+          <table class="bt-trades">
+            <thead>
+              <tr>
+                <th>#</th><th>Side</th><th>Entry</th><th>Exit</th>
+                <th>Entry $</th><th>Exit $</th><th>Days</th>
+                <th>P/L %</th><th>P/L $</th><th>Exit reason</th><th>Signal</th>
+              </tr>
+            </thead>
+            <tbody id="bt-trades-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel bt-empty" id="bt-empty">
+      <p>Pick a stock, set a date range and strategy, then <strong>Run backtest</strong>.</p>
+      <p class="hint">The engine walks the built-in pullback (long) / rally (short) strategy forward one bar at a time — entries fill at the next open, and exits fire on your stop, target, hold limit, or a 200-SMA break. No look-ahead.</p>
+    </section>
+  </main>
+
+  <script src="/static/backtest.js"></script>
+</body>
+</html>

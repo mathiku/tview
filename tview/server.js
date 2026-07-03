@@ -13,6 +13,7 @@ import {
   getStocksForPicker,
   resolveSymbol,
 } from "./stocks.js";
+import { runSymbolBacktest } from "./backtest.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -40,6 +41,10 @@ app.get("/stock", (_req, res) => {
 
 app.get("/watchlist", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "watchlist.html"));
+});
+
+app.get("/backtest", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "backtest.html"));
 });
 
 app.get("/api/stocks", async (_req, res) => {
@@ -124,6 +129,32 @@ app.get("/api/stock", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/backtest", async (req, res) => {
+  try {
+    const q = req.query;
+    const result = await runSymbolBacktest({
+      symbol: q.symbol,
+      startDate: q.start,
+      endDate: q.end,
+      direction: q.direction,
+      initialCapital: q.capital,
+      positionSizePct: q.size,
+      requirePattern: q.requirePattern === "true",
+      stopLossPct: q.stop,
+      takeProfitPct: q.target,
+      maxHoldDays: q.hold,
+      stopOn200Sma: q.sma200 !== "false",
+      rsiMax: q.rsiMax,
+      adxMin: q.adxMin,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    // Bad inputs (unknown symbol, thin history, bad dates) are 400s.
+    res.status(400).json({ error: err.message });
   }
 });
 
