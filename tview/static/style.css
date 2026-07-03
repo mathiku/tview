@@ -424,10 +424,10 @@ th {
   color: #22d3ee;
 }
 
-/* 2B that broke out earlier — muted hollow marker, informational only. */
+/* 2B that broke out earlier — yellow marker, informational only. */
 .check.db-occurred {
-  background: #1a1f2a;
-  color: #5b7089;
+  background: #2e2708;
+  color: #facc15;
 }
 
 .check-legend {

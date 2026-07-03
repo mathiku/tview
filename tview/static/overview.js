@@ -75,11 +75,12 @@ function dbTitle(db) {
   return "No double bottom on the last leg";
 }
 
-// Three-state 2B: current (on the last leg now), occurred (broke out earlier), or none.
+// Three-state 2B: current (cyan ✓, on the last leg now), occurred (yellow ●,
+// broke out earlier), or none (·).
 function dbMark(db) {
   const state = db?.state ?? "false";
   if (state === "current") return `<span class="check ok db-current">✓</span>`;
-  if (state === "occurred") return `<span class="check db-occurred">◦</span>`;
+  if (state === "occurred") return `<span class="check db-occurred">●</span>`;
   return `<span class="check no">·</span>`;
 }
 
