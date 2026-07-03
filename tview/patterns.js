@@ -7,8 +7,17 @@ function r2(n) {
  * neckline), with price now emerging up through that neckline. Scans the recent
  * window and returns the most recent valid formation.
  *
+ * state = "false"    — no valid double bottom in the window.
+ *         "current"  — price has just reclaimed the neckline (within the last
+ *                      `currentMaxBars` bars): we are on the pattern's last leg
+ *                      right now. This is the actionable one.
+ *         "occurred" — a double bottom broke out earlier and price has moved on;
+ *                      informational only (see `barsSinceBreakout`).
+ *
  * match   = price has climbed back to/through the neckline ("on the way out").
  * breakout = price is strictly above the neckline (confirmed).
+ * barsSinceBreakout = trading bars since the neckline was reclaimed (0 = today),
+ *                     or null while price is still below the neckline.
  */
 export function detectDoubleBottom(
   rows,
@@ -19,10 +28,13 @@ export function detectDoubleBottom(
     minDepthPct = 5,
     minSeparation = 8,
     breakoutBufferPct = 1,
+    currentMaxBars = 3,
+    currentMaxProgress = 1,
   } = {}
 ) {
+  const none = { state: "false", match: false, breakout: false, barsSinceBreakout: null };
   const n = rows.length;
-  if (n < 30) return { match: false, breakout: false };
+  if (n < 30) return none;
 
   const win = rows.slice(Math.max(0, n - window));
   const m = win.length;
@@ -39,7 +51,7 @@ export function detectDoubleBottom(
     }
     if (isLow) lows.push(i);
   }
-  if (lows.length < 2) return { match: false, breakout: false };
+  if (lows.length < 2) return none;
 
   // Most recent valid pair: latest second-low first, earliest matching first-low.
   let best = null;
@@ -61,12 +73,35 @@ export function detectDoubleBottom(
       break;
     }
   }
-  if (!best) return { match: false, breakout: false };
+  if (!best) return none;
 
   const price = win[m - 1].close;
+  const thresh = best.neck * (1 - breakoutBufferPct / 100);
+  const match = price >= thresh;
+
+  // How long we've held above the neckline: walk back over the trailing run of
+  // closes that are still above it. 0 = the neckline was reclaimed today.
+  let runAbove = 0;
+  for (let i = m - 1; i >= 0 && win[i].close >= thresh; i--) runAbove++;
+  const barsSinceBreakout = match ? Math.max(0, runAbove - 1) : null;
+
+  // Progress along the measured move (0 at the neckline, 1 at the target).
+  const depth = best.neck - best.base;
+  const progressAboveNeck = depth > 0 ? (price - best.neck) / depth : 0;
+
+  // "current" = we're on the last leg now: just reclaimed the neckline and not
+  // yet run away toward the target. Anything else that formed is "occurred".
+  let state = "false";
+  if (match) {
+    const fresh = barsSinceBreakout <= currentMaxBars && progressAboveNeck <= currentMaxProgress;
+    state = fresh ? "current" : "occurred";
+  }
+
   return {
-    match: price >= best.neck * (1 - breakoutBufferPct / 100),
+    state,
+    match,
     breakout: price > best.neck,
+    barsSinceBreakout,
     lowPrice: r2(best.base),
     neckline: r2(best.neck),
     // Classic measured-move target (informational).

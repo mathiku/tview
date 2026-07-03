@@ -27,6 +27,36 @@ test("detects a W that breaks out above the neckline", () => {
   assert.ok(db.neckline > db.lowPrice);
 });
 
+test("just reclaimed the neckline → state 'current'", () => {
+  // Breakout happens on the final bar: we're on the last leg right now.
+  const closes = [
+    120, 118, 116, 114, 112, 110, 108, 106, 104, 102, 100,
+    102, 104, 106, 108, 110, 112, 110, 108, 106, 104, 103, 102, 102, 101,
+    103, 106, 110, 113, 115,
+  ];
+  const db = detectDoubleBottom(rowsFrom(closes));
+  assert.equal(db.state, "current");
+  assert.ok(db.barsSinceBreakout <= 3);
+});
+
+test("broke out days ago → state 'occurred'", () => {
+  // Same W, then a long drift just above the neckline so the breakout is stale.
+  const closes = [
+    120, 118, 116, 114, 112, 110, 108, 106, 104, 102, 100,
+    102, 104, 106, 108, 110, 112, 110, 108, 106, 104, 103, 102, 102, 101,
+    103, 106, 110, 113, 113, 113, 113, 113, 113, 113,
+  ];
+  const db = detectDoubleBottom(rowsFrom(closes));
+  assert.equal(db.match, true);
+  assert.equal(db.state, "occurred");
+  assert.ok(db.barsSinceBreakout > 3);
+});
+
+test("no double bottom → state 'false'", () => {
+  const closes = Array.from({ length: 40 }, (_, i) => 100 + i);
+  assert.equal(detectDoubleBottom(rowsFrom(closes)).state, "false");
+});
+
 test("no match on a straight uptrend", () => {
   const closes = Array.from({ length: 40 }, (_, i) => 100 + i);
   assert.equal(detectDoubleBottom(rowsFrom(closes)).match, false);

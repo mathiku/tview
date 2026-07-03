@@ -245,6 +245,12 @@ a#tv-attr-logo {
   z-index: 2;
 }
 
+/* A double bottom that already broke out — shown dimmed, for reference only. */
+.signal-box.occurred {
+  border-color: #5b7089;
+  background: rgba(91, 112, 137, 0.06);
+}
+
 /* Single shared legend bar above the charts. */
 .chart-legend {
   display: flex;
@@ -410,6 +416,18 @@ th {
 .check.no {
   background: #1a1f2a;
   color: #4b5563;
+}
+
+/* 2B on the last leg now — highlighted cyan to match the chart box. */
+.check.db-current {
+  background: #0e2f38;
+  color: #22d3ee;
+}
+
+/* 2B that broke out earlier — muted hollow marker, informational only. */
+.check.db-occurred {
+  background: #1a1f2a;
+  color: #5b7089;
 }
 
 .check-legend {

@@ -165,6 +165,7 @@ function createChart(containerId) {
     }
     const left = Math.min(x1, x2);
     const top = Math.min(yTop, yBottom);
+    box.classList.toggle("occurred", !d.current);
     box.style.display = "block";
     box.style.left = `${left}px`;
     box.style.width = `${Math.max(Math.abs(x2 - x1), 2)}px`;
@@ -211,6 +212,7 @@ function applyDefaultVisibleRange(key, rows, signal) {
 
 const HAMMER_HL = "#fbbf24";
 const DB_HL = "#22d3ee";
+const DB_STALE = "#5b7089";
 
 // Draw the daily-bar signals (hammer, double bottom, trade levels) onto a chart.
 function annotateSignals(key, rows, signal) {
@@ -239,20 +241,41 @@ function annotateSignals(key, rows, signal) {
     });
   }
 
-  if (db?.match) {
-    markers.push({ time: db.low1Time, position: "belowBar", color: DB_HL, shape: "circle", text: "1" });
-    markers.push({ time: db.low2Time, position: "belowBar", color: DB_HL, shape: "circle", text: "2" });
+  // Draw the box for a live "current" 2B (bright) or a past "occurred" one
+  // (dimmed + labelled with how long ago it broke out). Skip when there's none.
+  const dbState = db?.state ?? "false";
+  if (dbState === "current" || dbState === "occurred") {
+    const current = dbState === "current";
+    const color = current ? DB_HL : DB_STALE;
+    const ago =
+      db.barsSinceBreakout == null
+        ? ""
+        : ` · ${db.barsSinceBreakout === 0 ? "today" : db.barsSinceBreakout + "d ago"}`;
+    markers.push({ time: db.low1Time, position: "belowBar", color, shape: "circle", text: "1" });
+    markers.push({
+      time: db.low2Time,
+      position: "belowBar",
+      color,
+      shape: "circle",
+      text: current ? "2 · 2B now" : `2 · 2B${ago}`,
+    });
     s.priceLines.push(
       s.candles.createPriceLine({
         price: db.neckline,
-        color: DB_HL,
+        color,
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dashed,
         axisLabelVisible: true,
         title: "neckline",
       })
     );
-    s.boxData = { low1Time: db.low1Time, low2Time: db.low2Time, top: db.neckline, bottom: db.lowPrice };
+    s.boxData = {
+      low1Time: db.low1Time,
+      low2Time: db.low2Time,
+      top: db.neckline,
+      bottom: db.lowPrice,
+      current,
+    };
   } else {
     s.boxData = null;
   }
@@ -447,12 +470,20 @@ function renderSetup(signal) {
     parts.push(setupItem("Target", `$${lv.target.toFixed(2)} (+${lv.rewardPct}%)`, "target"));
     parts.push(setupItem("Risk : reward", `1 : ${lv.rr}`));
   }
-  const dbText = db?.match
-    ? db.breakout
-      ? `Broke out · neckline $${db.neckline}`
-      : `Emerging · neckline $${db.neckline}`
-    : "None";
-  parts.push(setupItem("Double bottom", dbText, db?.match ? "target" : ""));
+  const dbState = db?.state ?? "false";
+  let dbText = "None";
+  let dbCls = "";
+  if (dbState === "current") {
+    dbText = `On the last leg · neckline $${db.neckline}`;
+    dbCls = "target";
+  } else if (dbState === "occurred") {
+    const ago =
+      db.barsSinceBreakout == null
+        ? ""
+        : ` ${db.barsSinceBreakout === 0 ? "today" : db.barsSinceBreakout + " bars ago"}`;
+    dbText = `Broke out${ago} · neckline $${db.neckline}`;
+  }
+  parts.push(setupItem("Double bottom", dbText, dbCls));
   box.innerHTML = parts.join("");
 }
 

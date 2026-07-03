@@ -56,11 +56,31 @@ function smaCell(stock, timeframe, sma, pct) {
   return `<td class="sma-cell ${pctClass(pct)}${highlight ? " pullback-focus" : ""}">${fmtPct(pct)}</td>`;
 }
 
+function dbAgo(db) {
+  const n = db?.barsSinceBreakout;
+  if (n == null) return "";
+  return n === 0 ? "today" : `${n} bar${n === 1 ? "" : "s"} ago`;
+}
+
 function dbTitle(db) {
-  if (!db?.match) return "No double bottom";
-  return db.breakout
-    ? `Double bottom — broke out above neckline ${db.neckline}`
-    : `Double bottom — emerging toward neckline ${db.neckline}`;
+  const state = db?.state ?? "false";
+  if (state === "current") {
+    return db.breakout
+      ? `Double bottom — breaking out through the neckline ${db.neckline} now (on the last leg)`
+      : `Double bottom — reclaiming the neckline ${db.neckline} now (on the last leg)`;
+  }
+  if (state === "occurred") {
+    return `Double bottom — broke out ${dbAgo(db)} (neckline ${db.neckline}); no longer on the last leg`;
+  }
+  return "No double bottom on the last leg";
+}
+
+// Three-state 2B: current (on the last leg now), occurred (broke out earlier), or none.
+function dbMark(db) {
+  const state = db?.state ?? "false";
+  if (state === "current") return `<span class="check ok db-current">✓</span>`;
+  if (state === "occurred") return `<span class="check db-occurred">◦</span>`;
+  return `<span class="check no">·</span>`;
 }
 
 function renderPatternChecks(signal) {
@@ -70,7 +90,7 @@ function renderPatternChecks(signal) {
     <td class="check-cell" title="Hammer candle on latest daily bar">${checkMark(p.hammer)}</td>
     <td class="check-cell" title="3 up days then 1–2 down days">${checkMark(p.pullbackStreak)}</td>
     <td class="check-cell" title="Pullback volume lighter than prior up days, or hammer on elevated volume">${checkMark(p.volumeOk)}</td>
-    <td class="check-cell" title="${dbTitle(db)}">${checkMark(db?.match)}</td>
+    <td class="check-cell" title="${dbTitle(db)}">${dbMark(db)}</td>
   `;
 }
 
@@ -177,7 +197,8 @@ function passesFilters(stock, f) {
     hammer: s.patterns?.hammer,
     pullbackStreak: s.patterns?.pullbackStreak,
     volumeOk: s.patterns?.volumeOk,
-    doubleBottom: s.doubleBottom?.match,
+    // The 2B filter targets only the actionable "on the last leg" case.
+    doubleBottom: s.doubleBottom?.state === "current",
   };
   for (const k in boolByKey) {
     if (f[`chk_${k}`] && !boolByKey[k]) return false;
@@ -222,7 +243,10 @@ function sortValue(stock, key) {
     case "hammer": return s.patterns?.hammer ? 1 : 0;
     case "pullbackStreak": return s.patterns?.pullbackStreak ? 1 : 0;
     case "volumeOk": return s.patterns?.volumeOk ? 1 : 0;
-    case "doubleBottom": return s.doubleBottom?.match ? 1 : 0;
+    case "doubleBottom": {
+      const st = s.doubleBottom?.state;
+      return st === "current" ? 2 : st === "occurred" ? 1 : 0;
+    }
     default: return null;
   }
 }

@@ -58,7 +58,7 @@
               <th><span class="th-label" data-sort="hammer" title="Hammer candle on latest bar">Hammer</span><label class="chk-filter"><input type="checkbox" data-check="hammer" /></label></th>
               <th><span class="th-label" data-sort="pullbackStreak" title="3↑↓ — three up days then 1–2 down days: an orderly pullback into the moving average">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="pullbackStreak" /></label></th>
               <th><span class="th-label" data-sort="volumeOk" title="Light volume on pullback or heavy on hammer">Vol</span><label class="chk-filter"><input type="checkbox" data-check="volumeOk" /></label></th>
-              <th><span class="th-label" data-sort="doubleBottom" title="2B — double bottom (&quot;W&quot;): two matching lows, now climbing back up through the middle peak">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
+              <th><span class="th-label" data-sort="doubleBottom" title="2B — double bottom (&quot;W&quot;). ✓ = on the last leg now (breaking the neckline); ◦ = broke out earlier (hover for how long ago)">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
               <th><span class="th-label" data-sort="recentHigh">Recent high</span><input class="col-filter" data-key="recentHigh" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="stop" title="Suggested stop — below the recent swing low">Stop</span></th>
               <th><span class="th-label" data-sort="target" title="Target — 1.2× the risk above entry">Target</span></th>
@@ -103,7 +103,7 @@
         <li><span class="check ok">✓</span> <strong>Hammer</strong> — a candle with a long lower wick and small body: price sold off during the day but closed back near the top, rejecting the lows</li>
         <li><span class="check ok">✓</span> <strong>3↑↓</strong> — three up days followed by 1–2 down days: a short, orderly pullback into the moving average rather than a collapse</li>
         <li><span class="check ok">✓</span> <strong>Vol</strong> — volume confirms: the down days traded lighter than the prior up-leg (weak selling), or a hammer printed on above-average volume (strong buying)</li>
-        <li><span class="check ok">✓</span> <strong>2B</strong> — a <strong>double bottom</strong>, the "W" shape: price bottomed, bounced, then dropped to about the <em>same</em> low a second time and is now climbing back up through the middle peak (the "neckline"). Two failed attempts to push lower is a classic sign the downtrend is exhausting.</li>
+        <li><span class="check ok db-current">✓</span> <strong>2B — double bottom</strong>, the "W" shape: price bottomed, bounced, dropped to about the <em>same</em> low a second time, and is now climbing back up through the middle peak (the "neckline"). Two failed attempts to push lower is a classic sign the downtrend is exhausting. A bright <span class="check ok db-current">✓</span> means it's <strong>on the last leg right now</strong> (just reclaiming the neckline) — the only actionable case. A muted <span class="check db-occurred">◦</span> means a double bottom <strong>broke out earlier</strong> and has moved on; hover to see how many bars ago.</li>
       </ul>
 
       <h3>Suggested levels (Stop · Target · Gain)</h3>
