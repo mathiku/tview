@@ -1223,3 +1223,49 @@ select.col-filter {
   font-size: 0.8rem;
 }
 .bt-help-eg code { color: #86efac; }
+
+/* ---- Backtest: natural-language translate box ---- */
+.bt-nl {
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  background: #0f1a2b;
+  border: 1px solid #23344d;
+  border-radius: 10px;
+  margin-bottom: 0.9rem;
+}
+.bt-nl-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.bt-nl-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.88rem;
+}
+.bt-nl-btn {
+  flex: 0 0 auto;
+  background: #1e2b52;
+  color: #cfe0ff;
+  border: 1px solid #33518f;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bt-nl-btn:hover { background: #26356a; }
+.bt-nl-btn:disabled { opacity: 0.5; cursor: default; }
+.bt-nl-note {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  min-height: 1rem;
+}
+.bt-nl-note.error { color: var(--negative); }

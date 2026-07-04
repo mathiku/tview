@@ -262,6 +262,36 @@ async function runBacktest(e) {
   }
 }
 
+async function translateNL() {
+  const text = el("bt-nl-input").value.trim();
+  const note = el("bt-nl-note");
+  if (!text) {
+    note.textContent = "Describe your strategy first.";
+    note.className = "bt-nl-note error";
+    return;
+  }
+  const btn = el("bt-nl-btn");
+  btn.disabled = true;
+  note.className = "bt-nl-note";
+  note.textContent = "Translating…";
+  try {
+    const res = await fetch(`/api/translate-strategy?q=${encodeURIComponent(text)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    el("bt-entry").value = data.entry;
+    el("bt-exit").value = data.exit;
+    if (data.direction) el("bt-direction").value = data.direction;
+    note.textContent = data.notes
+      ? `✓ Filled in — review below. ${data.notes}`
+      : "✓ Filled in the rules below — review, tweak, then Run backtest.";
+  } catch (err) {
+    note.textContent = err.message;
+    note.className = "bt-nl-note error";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function isoDaysAgo(days) {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - days);
@@ -274,6 +304,10 @@ function boot() {
   el("bt-form").addEventListener("submit", runBacktest);
   document.querySelectorAll(".bt-mode-tab").forEach((tab) => {
     tab.addEventListener("click", () => setMode(tab.dataset.mode));
+  });
+  el("bt-nl-btn").addEventListener("click", translateNL);
+  el("bt-nl-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); translateNL(); }
   });
 }
 

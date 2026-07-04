@@ -96,6 +96,16 @@
         </div>
 
         <div class="bt-row bt-section" id="bt-custom-section" hidden>
+          <div class="bt-nl">
+            <div class="bt-field bt-field-rule">
+              <label for="bt-nl-input">Describe it in plain English <span class="hint">— an LLM fills in the rules below for you to review</span></label>
+              <div class="bt-nl-row">
+                <input type="text" id="bt-nl-input" class="bt-nl-input" spellcheck="false" placeholder="e.g. buy oversold dips above the 200-day line, take 10% profit or cut at 5%" />
+                <button type="button" id="bt-nl-btn" class="bt-nl-btn">Translate ✨</button>
+              </div>
+              <span class="bt-nl-note" id="bt-nl-note"></span>
+            </div>
+          </div>
           <div class="bt-rules">
             <div class="bt-field bt-field-rule">
               <label for="bt-entry">Entry rule — buy when this is true</label>

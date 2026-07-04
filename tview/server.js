@@ -14,6 +14,7 @@ import {
   resolveSymbol,
 } from "./stocks.js";
 import { runSymbolBacktest, runCustomBacktest } from "./backtest.js";
+import { translateStrategy } from "./nl-translate.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -160,6 +161,16 @@ app.get("/api/backtest", async (req, res) => {
   } catch (err) {
     console.error(err);
     // Bad inputs (unknown symbol, thin history, bad dates) are 400s.
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/translate-strategy", async (req, res) => {
+  try {
+    const result = await translateStrategy(req.query.q);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
     res.status(400).json({ error: err.message });
   }
 });
