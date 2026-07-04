@@ -9,9 +9,26 @@
 //   openai-compatible (Groq / OpenAI / Ollama):
 //     LLM_API_KEY, LLM_BASE_URL (e.g. https://api.groq.com/openai/v1),
 //     LLM_MODEL (e.g. llama-3.3-70b-versatile)
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { compile, VARIABLES, FUNCTIONS } from "./strategy-dsl.js";
 
 const MAX_INPUT = 1000;
+
+// Fallback key store: a gitignored `.apikey` file next to this module. Read once
+// and cached; never logged. Used when the matching env var isn't set.
+const KEY_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), ".apikey");
+let fileKeyCache;
+function fileKey() {
+  if (fileKeyCache !== undefined) return fileKeyCache;
+  try {
+    fileKeyCache = readFileSync(KEY_FILE, "utf8").trim() || null;
+  } catch {
+    fileKeyCache = null;
+  }
+  return fileKeyCache;
+}
 
 const SYSTEM_PROMPT = `You translate a trader's plain-English idea into a tiny rule language for a stock backtester.
 
@@ -41,9 +58,9 @@ function buildUserPrompt(text, priorError) {
 }
 
 async function callGemini(system, user) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("Set GEMINI_API_KEY to enable natural-language translation");
-  const model = process.env.LLM_MODEL || "gemini-2.0-flash";
+  const key = process.env.GEMINI_API_KEY || fileKey();
+  if (!key) throw new Error("Set GEMINI_API_KEY (or put the key in tview/.apikey) to enable natural-language translation");
+  const model = process.env.LLM_MODEL || "gemini-2.5-flash-lite";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const res = await fetch(url, {
     method: "POST",
@@ -62,7 +79,7 @@ async function callGemini(system, user) {
 }
 
 async function callOpenAICompatible(system, user) {
-  const key = process.env.LLM_API_KEY;
+  const key = process.env.LLM_API_KEY || fileKey();
   const base = process.env.LLM_BASE_URL;
   const model = process.env.LLM_MODEL;
   if (!base || !model) throw new Error("Set LLM_BASE_URL and LLM_MODEL for the openai provider");
@@ -89,11 +106,27 @@ async function callOpenAICompatible(system, user) {
   return text;
 }
 
-function callProvider(system, user) {
+// Transient provider hiccups worth retrying (server overload, not quota/auth).
+const TRANSIENT = /HTTP (500|502|503|504)|UNAVAILABLE|overloaded|high demand/i;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function callProvider(system, user) {
   const provider = (process.env.LLM_PROVIDER || "gemini").toLowerCase();
-  if (provider === "gemini") return callGemini(system, user);
-  if (provider === "openai") return callOpenAICompatible(system, user);
-  throw new Error(`Unknown LLM_PROVIDER "${provider}" (use "gemini" or "openai")`);
+  const fn =
+    provider === "gemini" ? callGemini : provider === "openai" ? callOpenAICompatible : null;
+  if (!fn) throw new Error(`Unknown LLM_PROVIDER "${provider}" (use "gemini" or "openai")`);
+
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fn(system, user);
+    } catch (err) {
+      lastErr = err;
+      if (!TRANSIENT.test(err.message) || attempt === 2) throw err;
+      await sleep(400 * (attempt + 1));
+    }
+  }
+  throw lastErr;
 }
 
 function extractJson(raw) {

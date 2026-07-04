@@ -35,15 +35,17 @@ Chart defaults:
 The Custom-rules tab has a "Describe it in plain English" box that uses a small LLM to fill in the entry/exit rules for you to review. It's off unless you configure a provider via environment variables (the rest of the app works without it):
 
 ```bash
-# Google Gemini (free tier) — the default provider
-export GEMINI_API_KEY=...            # from aistudio.google.com
-# export LLM_MODEL=gemini-2.0-flash  # optional override
+# Google Gemini (free tier) — the default provider.
+# Provide the key either as an env var OR in a gitignored `.apikey` file
+# next to server.js (tview/.apikey). Env var wins if both are set.
+export GEMINI_API_KEY=...                 # from aistudio.google.com
+# export LLM_MODEL=gemini-2.5-flash-lite  # default; free tier may not cover 2.0-flash
 
 # OR any OpenAI-compatible endpoint (Groq, OpenAI, local Ollama, …)
 export LLM_PROVIDER=openai
 export LLM_BASE_URL=https://api.groq.com/openai/v1
 export LLM_MODEL=llama-3.3-70b-versatile
-export LLM_API_KEY=...
+export LLM_API_KEY=...                     # or the same `.apikey` file
 ```
 
 The model only translates English into the rule language; the generated rules are validated by the same parser the backtest uses, so a bad translation surfaces as an error rather than a broken run.
