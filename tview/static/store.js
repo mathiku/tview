@@ -5,6 +5,7 @@
 (function () {
   const WATCHLIST_KEY = "tview:watchlist";
   const FILTERS_KEY = "tview:filters";
+  const DIRECTION_KEY = "tview:direction";
 
   function readJSON(key, fallback) {
     try {
@@ -63,6 +64,14 @@
     setFilters(filters) {
       writeJSON(FILTERS_KEY, filters);
       return filters;
+    },
+
+    getDirection() {
+      return readJSON(DIRECTION_KEY, "long") === "short" ? "short" : "long";
+    },
+    setDirection(direction) {
+      writeJSON(DIRECTION_KEY, direction === "short" ? "short" : "long");
+      return direction;
     },
   };
 

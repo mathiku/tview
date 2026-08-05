@@ -29,11 +29,14 @@ async function writeJson(file, data) {
 
 export async function readOverviewSnapshot() {
   const snap = await readJson(OVERVIEW_FILE);
-  return snap?.sessionKey && snap.payload ? snap : null;
+  if (!snap?.sessionKey) return null;
+  if (snap.long && snap.short) return snap;
+  if (snap.payload) return snap;
+  return null;
 }
 
 export async function writeOverviewSnapshot(sessionKey, payload) {
-  await writeJson(OVERVIEW_FILE, { sessionKey, payload });
+  await writeJson(OVERVIEW_FILE, { sessionKey, ...payload });
 }
 
 function historyPath(symbol) {

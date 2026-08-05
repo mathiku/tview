@@ -13,6 +13,8 @@ import {
   getStocksForPicker,
   resolveSymbol,
 } from "./stocks.js";
+import { runSymbolBacktest, runCustomBacktest } from "./backtest.js";
+import { translateStrategy } from "./nl-translate.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -40,6 +42,10 @@ app.get("/stock", (_req, res) => {
 
 app.get("/watchlist", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "watchlist.html"));
+});
+
+app.get("/backtest", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "backtest.html"));
 });
 
 app.get("/api/stocks", async (_req, res) => {
@@ -92,9 +98,10 @@ app.delete("/api/pinned/:symbol", async (req, res) => {
   }
 });
 
-app.get("/api/overview", async (_req, res) => {
+app.get("/api/overview", async (req, res) => {
   try {
-    res.json(await getOverview());
+    const direction = req.query.direction === "short" ? "short" : "long";
+    res.json(await getOverview(direction));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
@@ -105,12 +112,13 @@ app.get("/api/analyze", async (req, res) => {
   try {
     const raw = String(req.query.symbols ?? "").trim();
     if (!raw) return res.json({ stocks: [] });
+    const direction = req.query.direction === "short" ? "short" : "long";
     const symbols = raw
       .split(",")
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean)
       .slice(0, 40);
-    res.json({ stocks: await analyzeSymbols(symbols) });
+    res.json({ stocks: await analyzeSymbols(symbols, direction) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
@@ -120,10 +128,53 @@ app.get("/api/analyze", async (req, res) => {
 app.get("/api/stock", async (req, res) => {
   try {
     const symbol = resolveSymbol(req.query.symbol);
-    res.json(await getPayload(symbol));
+    const direction = req.query.direction === "short" ? "short" : "long";
+    res.json(await getPayload(symbol, direction));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
+  }
+});
+
+app.get("/api/backtest", async (req, res) => {
+  try {
+    const q = req.query;
+    const common = {
+      symbol: q.symbol,
+      startDate: q.start,
+      endDate: q.end,
+      direction: q.direction,
+      initialCapital: q.capital,
+      positionSizePct: q.size,
+      stopLossPct: q.stop,
+      takeProfitPct: q.target,
+      maxHoldDays: q.hold,
+    };
+    const result =
+      q.mode === "custom"
+        ? await runCustomBacktest({ ...common, entry: q.entry, exit: q.exit })
+        : await runSymbolBacktest({
+            ...common,
+            requirePattern: q.requirePattern === "true",
+            stopOn200Sma: q.sma200 !== "false",
+            rsiMax: q.rsiMax,
+            adxMin: q.adxMin,
+          });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    // Bad inputs (unknown symbol, thin history, bad dates) are 400s.
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/translate-strategy", async (req, res) => {
+  try {
+    const result = await translateStrategy(req.query.q);
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: err.message });
   }
 });
 

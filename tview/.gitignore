@@ -3,6 +3,7 @@ node_modules/
 dashboard-screenshot.png
 .env
 .token
+.apikey
 
 # Runtime per-symbol history cache (rebuilt on demand). The overview.json seed
 # snapshot in data/cache/ is committed intentionally.
