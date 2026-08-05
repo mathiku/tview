@@ -80,6 +80,49 @@ body {
   color: var(--negative);
 }
 
+.badge.loading {
+  background: #3a2f12;
+  color: #fcd34d;
+}
+
+.direction-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.15rem;
+}
+
+.dir-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+
+.dir-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dir-btn.active[data-direction="long"] {
+  background: #1a3d2e;
+  color: #86efac;
+}
+
+.dir-btn.active[data-direction="short"] {
+  background: #3a1d1d;
+  color: #fca5a5;
+}
+
+body[data-direction="short"] .long-only-col {
+  display: none;
+}
+
 .top-nav {
   display: flex;
   gap: 0.35rem;
@@ -502,9 +545,11 @@ th {
 }
 
 .signal-pill.pullback { background: #1a3d2e; color: #86efac; }
+.signal-pill.rally { background: #3a1d1d; color: #fca5a5; }
 .signal-pill.near-100 { background: #3a2f12; color: #fcd34d; }
 .signal-pill.trend-ok { background: #1a3328; color: var(--positive); }
 .signal-pill.extended { background: #243044; color: #b8d4ff; }
+.signal-pill.extended-down { background: #2a1a2a; color: #e9a8ff; }
 .signal-pill.mixed { background: #2a2f1a; color: #d9e676; }
 .signal-pill.weak { background: #3a1d1d; color: var(--negative); }
 

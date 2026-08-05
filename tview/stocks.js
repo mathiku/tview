@@ -301,6 +301,43 @@ export function suggestLevels(dailyData, indicators, swingLookback = 10) {
   };
 }
 
+/**
+ * Suggested short entry / stop / target. Stop sits just above the recent swing
+ * high, falling back to 2×ATR when there's no usable high.
+ */
+export function suggestShortLevels(dailyData, indicators, swingLookback = 10) {
+  const n = dailyData.length;
+  if (!n) return null;
+  const entry = dailyData[n - 1].close;
+
+  const recent = dailyData.slice(-swingLookback);
+  const swingHigh = Math.max(...recent.map((r) => r.high));
+
+  let stop = round2(swingHigh * 1.002);
+  let risk = stop - entry;
+
+  const atr = indicators?.atr;
+  if (atr != null && (!(risk > 0) || risk < atr * 0.5 || risk > atr * 3)) {
+    stop = round2(entry + 2 * atr);
+    risk = stop - entry;
+  }
+  if (!(risk > 0)) return null;
+
+  const target = round2(entry - RISK_REWARD * risk);
+  return {
+    entry: round2(entry),
+    stop,
+    target,
+    riskPct: round2((risk / entry) * 100),
+    rewardPct: round2(((entry - target) / entry) * 100),
+    rr: RISK_REWARD,
+  };
+}
+
+export function normalizeDirection(raw) {
+  return raw === "short" ? "short" : "long";
+}
+
 /** Uptrend intact + daily tag of 100 SMA after a recent stretch higher. */
 export function scorePullback(dailyRows, comparison, opts = {}) {
   const dailyData = buildSeries(dailyRows, "1d");
@@ -469,6 +506,7 @@ export function scoreRallyShort(dailyRows, comparison, opts = {}) {
 
   const watch = trendOk && at100Sma && wasLowerRecently && filtersPass;
   const patterns = analyzeShortPatterns(dailyRows, { at100Sma });
+  const levels = suggestShortLevels(dailyData, indicators);
 
   let score = 0;
   if (watch) {
@@ -526,6 +564,7 @@ export function scoreRallyShort(dailyRows, comparison, opts = {}) {
     },
     indicators,
     patterns,
+    levels,
   };
 }
 
@@ -641,11 +680,12 @@ export async function buildScanUniverse() {
 }
 
 /** Analyse a caller-supplied list of symbols (a user's watchlist). */
-export async function analyzeSymbols(symbols) {
+export async function analyzeSymbols(symbols, direction = "long") {
   const session = sessionKey();
+  const dir = normalizeDirection(direction);
   const items = symbols.map((s) => s.toUpperCase());
   return mapPool(items, FETCH_CONCURRENCY, async (sym) => {
-    const { comparison, signal } = await loadStockAnalysis(sym, session);
+    const { comparison, signal } = await loadStockAnalysis(sym, session, dir);
     const stock = BIG_STOCK_BY_SYMBOL.get(sym);
     return {
       symbol: sym,
@@ -693,39 +733,58 @@ async function mapPool(items, concurrency, fn) {
   return results.filter(Boolean);
 }
 
-async function loadStockAnalysis(symbol, session) {
+function scoreForDirection(dailyRows, comparison, direction) {
+  return direction === "short"
+    ? scoreRallyShort(dailyRows, comparison)
+    : scorePullback(dailyRows, comparison);
+}
+
+function signalCacheKey(session, direction) {
+  return `${session}:${direction}`;
+}
+
+async function loadStockAnalysis(symbol, session, direction = "long") {
+  const dir = normalizeDirection(direction);
+  const cacheKey = signalCacheKey(session, dir);
   const cached = cache.get(symbol);
-  if (cached?.signal && cached.session === session) {
-    return { comparison: cached.comparison, signal: cached.signal };
+  if (cached?.signals?.[cacheKey]) {
+    return { comparison: cached.comparison, signal: cached.signals[cacheKey] };
   }
 
   const dailyRows = cached?.dailyRows && cached.session === session
     ? cached.dailyRows
     : await loadHistory(symbol);
-  const comparison = buildComparison(dailyRows);
-  const signal = scorePullback(dailyRows, comparison);
+  const comparison = cached?.comparison && cached.session === session
+    ? cached.comparison
+    : buildComparison(dailyRows);
+  const signal = scoreForDirection(dailyRows, comparison, dir);
+  const signals = { ...(cached?.signals ?? {}), [cacheKey]: signal };
 
-  setMem(symbol, { ...cached, session, comparison, dailyRows, signal });
+  setMem(symbol, { ...cached, session, comparison, dailyRows, signals });
   return { comparison, signal };
 }
 
-export async function getPayload(symbol) {
+export async function getPayload(symbol, direction = "long") {
   const session = sessionKey();
+  const dir = normalizeDirection(direction);
+  const payloadKey = signalCacheKey(session, dir);
   const cached = cache.get(symbol);
-  if (cached?.payload && cached.session === session) return cached.payload;
+  if (cached?.payloads?.[payloadKey]) return cached.payloads[payloadKey];
 
   const dailyRows = cached?.dailyRows && cached.session === session
     ? cached.dailyRows
     : await loadHistory(symbol);
-  const comparison = buildComparison(dailyRows);
-  const charts = {};
-
-  for (const [key, cfg] of Object.entries(INTERVALS)) {
-    charts[key] = {
-      label: cfg.label,
-      data: buildSeries(dailyRows, key),
-    };
-  }
+  const comparison = cached?.comparison && cached.session === session
+    ? cached.comparison
+    : buildComparison(dailyRows);
+  const charts = cached?.charts && cached.session === session
+    ? cached.charts
+    : Object.fromEntries(
+        Object.entries(INTERVALS).map(([key, cfg]) => [
+          key,
+          { label: cfg.label, data: buildSeries(dailyRows, key) },
+        ])
+      );
 
   const stock =
     activeUniverse.find((s) => s.symbol === symbol) ?? BIG_STOCK_BY_SYMBOL.get(symbol);
@@ -734,32 +793,18 @@ export async function getPayload(symbol) {
     name: stock?.name ?? BIG_STOCK_BY_SYMBOL.get(symbol)?.name ?? symbol,
     updated_at: new Date().toISOString(),
     asOf: session,
+    direction: dir,
     charts,
     comparison,
-    signal: scorePullback(dailyRows, comparison),
+    signal: scoreForDirection(dailyRows, comparison, dir),
   };
 
-  setMem(symbol, { ...cached, session, comparison, dailyRows, payload });
+  const payloads = { ...(cached?.payloads ?? {}), [payloadKey]: payload };
+  setMem(symbol, { ...cached, session, comparison, dailyRows, charts, payloads });
   return payload;
 }
 
-/** Scan the whole universe for one session and persist the snapshot. */
-async function refreshOverview(session) {
-  const scanMeta = await buildScanUniverse();
-  const { universe, pinnedCount, randomCount, poolSize } = scanMeta;
-
-  const stocks = await mapPool(universe, FETCH_CONCURRENCY, async (stock) => {
-    const { comparison, signal } = await loadStockAnalysis(stock.symbol, session);
-    return {
-      symbol: stock.symbol,
-      name: stock.name,
-      pinned: stock.pinned,
-      price: comparison["1d"].price,
-      comparison,
-      signal,
-    };
-  });
-
+function sortOverviewStocks(stocks) {
   stocks.sort((a, b) => {
     if (Number(b.pinned) !== Number(a.pinned)) return Number(b.pinned) - Number(a.pinned);
     if (Number(b.signal.watch) !== Number(a.signal.watch)) {
@@ -770,22 +815,68 @@ async function refreshOverview(session) {
     if (b.signal.score !== a.signal.score) return b.signal.score - a.signal.score;
     return a.symbol.localeCompare(b.symbol);
   });
+  return stocks;
+}
 
-  const payload = {
+async function buildOverviewPayload(universe, session, direction, scanMeta) {
+  const dir = normalizeDirection(direction);
+  const stocks = await mapPool(universe, FETCH_CONCURRENCY, async (stock) => {
+    const { comparison, signal } = await loadStockAnalysis(stock.symbol, session, dir);
+    return {
+      symbol: stock.symbol,
+      name: stock.name,
+      pinned: stock.pinned,
+      price: comparison["1d"].price,
+      comparison,
+      signal,
+    };
+  });
+
+  sortOverviewStocks(stocks);
+
+  return {
     updated_at: new Date().toISOString(),
     asOf: session,
+    direction: dir,
     total: stocks.length,
     scanned: universe.length,
-    pinnedCount,
-    randomCount,
-    poolSize,
+    pinnedCount: scanMeta.pinnedCount,
+    randomCount: scanMeta.randomCount,
+    poolSize: scanMeta.poolSize,
     stocks,
   };
+}
 
-  const snapshot = { sessionKey: session, payload };
+/** Scan the whole universe for one session and persist the snapshot. */
+async function refreshOverview(session) {
+  const scanMeta = await buildScanUniverse();
+  const { universe } = scanMeta;
+
+  const [longPayload, shortPayload] = await Promise.all([
+    buildOverviewPayload(universe, session, "long", scanMeta),
+    buildOverviewPayload(universe, session, "short", scanMeta),
+  ]);
+
+  const snapshot = { sessionKey: session, long: longPayload, short: shortPayload };
   overviewSnapshot = snapshot;
-  await writeOverviewSnapshot(session, payload);
+  await writeOverviewSnapshot(session, { long: longPayload, short: shortPayload });
   return snapshot;
+}
+
+function overviewPayloadForDirection(snapshot, direction) {
+  const dir = normalizeDirection(direction);
+  let payload = null;
+  if (snapshot?.long && snapshot?.short) {
+    payload = dir === "short" ? snapshot.short : snapshot.long;
+  } else if (snapshot?.long) {
+    payload = dir === "long" ? snapshot.long : null;
+  } else {
+    payload = snapshot?.payload ?? null;
+  }
+  if (payload && payload.direction !== dir) {
+    return { ...payload, direction: dir };
+  }
+  return payload;
 }
 
 /**
@@ -794,11 +885,19 @@ async function refreshOverview(session) {
  * zero fetching. When a new session appears we return the stale snapshot
  * immediately and revalidate in the background (stale-while-revalidate).
  */
-export async function getOverview() {
+export async function getOverview(direction = "long") {
   const session = sessionKey();
+  const dir = normalizeDirection(direction);
 
   if (!overviewSnapshotLoaded) {
-    overviewSnapshot = await readOverviewSnapshot();
+    const disk = await readOverviewSnapshot();
+    if (disk?.long && disk?.short) {
+      overviewSnapshot = { sessionKey: disk.sessionKey, long: disk.long, short: disk.short };
+    } else if (disk?.payload) {
+      overviewSnapshot = { sessionKey: disk.sessionKey, long: disk.payload, short: null };
+    } else {
+      overviewSnapshot = disk;
+    }
     overviewSnapshotLoaded = true;
   }
 
@@ -811,14 +910,21 @@ export async function getOverview() {
           overviewRefreshing = false;
         });
     }
-    return overviewSnapshot.payload;
+    let payload = overviewPayloadForDirection(overviewSnapshot, dir);
+    if (payload) return payload;
+    if (dir === "short" && overviewSnapshot.long && !overviewSnapshot.short) {
+      const scanMeta = await buildScanUniverse();
+      payload = await buildOverviewPayload(scanMeta.universe, session, "short", scanMeta);
+      overviewSnapshot = { ...overviewSnapshot, short: payload };
+      return payload;
+    }
   }
 
   // No snapshot at all (fresh install, nothing committed) → compute synchronously.
   overviewRefreshing = true;
   try {
     const snapshot = await refreshOverview(session);
-    return snapshot.payload;
+    return overviewPayloadForDirection(snapshot, dir);
   } finally {
     overviewRefreshing = false;
   }

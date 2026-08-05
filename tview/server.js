@@ -98,9 +98,10 @@ app.delete("/api/pinned/:symbol", async (req, res) => {
   }
 });
 
-app.get("/api/overview", async (_req, res) => {
+app.get("/api/overview", async (req, res) => {
   try {
-    res.json(await getOverview());
+    const direction = req.query.direction === "short" ? "short" : "long";
+    res.json(await getOverview(direction));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
@@ -111,12 +112,13 @@ app.get("/api/analyze", async (req, res) => {
   try {
     const raw = String(req.query.symbols ?? "").trim();
     if (!raw) return res.json({ stocks: [] });
+    const direction = req.query.direction === "short" ? "short" : "long";
     const symbols = raw
       .split(",")
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean)
       .slice(0, 40);
-    res.json({ stocks: await analyzeSymbols(symbols) });
+    res.json({ stocks: await analyzeSymbols(symbols, direction) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
@@ -126,7 +128,8 @@ app.get("/api/analyze", async (req, res) => {
 app.get("/api/stock", async (req, res) => {
   try {
     const symbol = resolveSymbol(req.query.symbol);
-    res.json(await getPayload(symbol));
+    const direction = req.query.direction === "short" ? "short" : "long";
+    res.json(await getPayload(symbol, direction));
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });
