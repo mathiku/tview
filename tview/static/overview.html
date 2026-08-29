@@ -34,7 +34,8 @@
       <div class="panel-head">
         <h2 id="panel-title">Pullback candidates</h2>
         <div class="overview-tools">
-          <label class="tool-check"><input type="checkbox" id="filter-watch" /> Watch only</label>
+          <label class="tool-check"><input type="checkbox" id="filter-simple" /> Keep it simple</label>
+          <label class="tool-check detail-tool"><input type="checkbox" id="filter-watch" /> Watch only</label>
           <button type="button" id="filter-clear" class="tool-btn">Clear</button>
         </div>
       </div>
@@ -43,32 +44,34 @@
           <thead>
             <tr class="group-row">
               <th colspan="9"></th>
-              <th colspan="3" class="group-head" id="setup-group-head">Pullback</th>
-              <th colspan="3" class="group-head pattern-head" id="pattern-group-head">Patterns</th>
-              <th colspan="1" class="group-head pattern-head long-only-col" id="col-2b-group"></th>
-              <th colspan="5"></th>
+              <th colspan="9"></th>
+              <th colspan="3" class="group-head detail-col" id="setup-group-head">Pullback</th>
+              <th colspan="3" class="group-head pattern-head detail-col" id="pattern-group-head">Patterns</th>
+              <th colspan="1" class="group-head pattern-head detail-col long-only-col" id="col-2b-group"></th>
+              <th colspan="4" class="detail-col"></th>
+              <th colspan="1"></th>
             </tr>
             <tr class="head-row">
               <th class="col-stock"><span class="th-label" data-sort="text">Stock</span><input class="col-filter" data-key="text" data-type="text" placeholder="Filter…" /></th>
               <th><span class="th-label" data-sort="price">Price</span><input class="col-filter" data-key="price" data-type="num" placeholder="≥" /></th>
-              <th class="focus-col"><span class="th-label" data-sort="d100">D · 100</span><input class="col-filter" data-key="d100" data-type="num" placeholder="≥" /></th>
-              <th><span class="th-label" data-sort="d200">D · 200</span><input class="col-filter" data-key="d200" data-type="num" placeholder="≥" /></th>
-              <th><span class="th-label" data-sort="w100">W · 100</span><input class="col-filter" data-key="w100" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="d100">D · 100</span><input class="col-filter" data-key="d100" data-type="num" placeholder="≥" /></th>
+              <th class="focus-col"><span class="th-label" data-sort="d200">D · 200</span><input class="col-filter" data-key="d200" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="w100">W · 100</span><input class="col-filter" data-key="w100" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="w200">W · 200</span><input class="col-filter" data-key="w200" data-type="num" placeholder="≥" /></th>
-              <th><span class="th-label" data-sort="m100">M · 100</span><input class="col-filter" data-key="m100" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="m100">M · 100</span><input class="col-filter" data-key="m100" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="m200">M · 200</span><input class="col-filter" data-key="m200" data-type="num" placeholder="≥" /></th>
-              <th><span class="th-label" data-sort="smas" id="smas-head">SMAs+</span><input class="col-filter" data-key="smas" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="smas" id="smas-head">SMAs+</span><input class="col-filter" data-key="smas" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="trendOk" id="trend-head" title="W+M above 200 SMA or 5+/6 bull">Trend</span><label class="chk-filter"><input type="checkbox" data-check="trendOk" /></label></th>
-              <th><span class="th-label" data-sort="at100Sma" title="Daily within ±3% of 100 SMA">At 100</span><label class="chk-filter"><input type="checkbox" data-check="at100Sma" /></label></th>
+              <th><span class="th-label" data-sort="atSma" id="at-sma-head" title="Daily within ±3% of 100 SMA">At 100</span><label class="chk-filter"><input type="checkbox" data-check="atSma" /></label></th>
               <th><span class="th-label" data-sort="wasExtendedRecently" id="was-ext-head" title="Was ≥5% above daily 100 SMA in last ~4 weeks">Was high</span><label class="chk-filter"><input type="checkbox" data-check="wasExtendedRecently" /></label></th>
-              <th><span class="th-label" data-sort="patternA" id="pattern-a-head" title="Hammer candle on latest bar">Hammer</span><label class="chk-filter"><input type="checkbox" data-check="patternA" /></label></th>
-              <th><span class="th-label" data-sort="patternB" id="pattern-b-head" title="3↑↓ — three up days then 1–2 down days">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="patternB" /></label></th>
-              <th><span class="th-label" data-sort="volumeOk" title="Light volume on pullback or heavy on hammer">Vol</span><label class="chk-filter"><input type="checkbox" data-check="volumeOk" /></label></th>
-              <th class="long-only-col"><span class="th-label" data-sort="doubleBottom" id="col-2b-head" title="2B — double bottom">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
-              <th><span class="th-label" data-sort="recentExtreme" id="recent-ext-head">Recent high</span><input class="col-filter" data-key="recentExtreme" data-type="num" placeholder="≥" /></th>
-              <th><span class="th-label" data-sort="stop" id="stop-head" title="Suggested stop — below the recent swing low">Stop</span></th>
-              <th><span class="th-label" data-sort="target" title="Target — 1.2× the risk above entry">Target</span></th>
-              <th><span class="th-label" data-sort="gain" id="gain-head" title="Gain if the target is hit">Gain</span><input class="col-filter" data-key="gain" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="patternA" id="pattern-a-head" title="Hammer candle on latest bar">Hammer</span><label class="chk-filter"><input type="checkbox" data-check="patternA" /></label></th>
+              <th class="detail-col"><span class="th-label" data-sort="patternB" id="pattern-b-head" title="3↑↓ — three up days then 1–2 down days">3↑↓</span><label class="chk-filter"><input type="checkbox" data-check="patternB" /></label></th>
+              <th class="detail-col"><span class="th-label" data-sort="volumeOk" title="Light volume on pullback or heavy on hammer">Vol</span><label class="chk-filter"><input type="checkbox" data-check="volumeOk" /></label></th>
+              <th class="detail-col long-only-col"><span class="th-label" data-sort="doubleBottom" id="col-2b-head" title="2B — double bottom">2B</span><label class="chk-filter"><input type="checkbox" data-check="doubleBottom" /></label></th>
+              <th class="detail-col"><span class="th-label" data-sort="recentExtreme" id="recent-ext-head">Recent high</span><input class="col-filter" data-key="recentExtreme" data-type="num" placeholder="≥" /></th>
+              <th class="detail-col"><span class="th-label" data-sort="stop" id="stop-head" title="Suggested stop — below the recent swing low">Stop</span></th>
+              <th class="detail-col"><span class="th-label" data-sort="target" title="Target — 1.2× the risk above entry">Target</span></th>
+              <th class="detail-col"><span class="th-label" data-sort="gain" id="gain-head" title="Gain if the target is hit">Gain</span><input class="col-filter" data-key="gain" data-type="num" placeholder="≥" /></th>
               <th><span class="th-label" data-sort="signal">Signal</span><select class="col-filter" id="signal-filter" data-key="signal">
                 <option value="">All</option>
               </select></th>
@@ -81,7 +84,7 @@
       </div>
     </section>
 
-    <details class="legend-panel legend-details">
+    <details class="legend-panel legend-details detail-col">
       <summary>What every column means</summary>
       <p>The scan looks for healthy uptrends that have <strong>dipped back to the 100-day moving average</strong> — a spot where a rising stock often finds support and bounces. A <strong>moving average (SMA)</strong> is just the average closing price over the last N bars; the 100-day line smooths out the noise and tends to act like a floor in an uptrend.</p>
       <p><strong>★ Pinned</strong> stocks always appear in the overview (manage on the Watchlist page). <strong>Random large caps</strong> fill out the rest of today's scan (~55/day from a ~170-stock pool).</p>
