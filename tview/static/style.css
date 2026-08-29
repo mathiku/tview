@@ -123,6 +123,18 @@ body[data-direction="short"] .long-only-col {
   display: none;
 }
 
+body[data-view="simple"] .detail-col {
+  display: none;
+}
+
+body[data-view="simple"] .focus-col {
+  /* daily 200 stays visible as the anchor column */
+}
+
+body[data-view="simple"] .detail-tool {
+  display: inline-flex;
+}
+
 .top-nav {
   display: flex;
   gap: 0.35rem;
@@ -545,8 +557,10 @@ th {
 }
 
 .signal-pill.pullback { background: #1a3d2e; color: #86efac; }
+.signal-pill.bounce { background: #1a3344; color: #7dd3fc; }
 .signal-pill.rally { background: #3a1d1d; color: #fca5a5; }
 .signal-pill.near-100 { background: #3a2f12; color: #fcd34d; }
+.signal-pill.near-200 { background: #1e3344; color: #93c5fd; }
 .signal-pill.trend-ok { background: #1a3328; color: var(--positive); }
 .signal-pill.extended { background: #243044; color: #b8d4ff; }
 .signal-pill.extended-down { background: #2a1a2a; color: #e9a8ff; }

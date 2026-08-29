@@ -3,6 +3,7 @@ const REFRESH_MS = 60_000;
 let allStocks = [];
 let meta = { randomCount: 0, poolSize: 0 };
 let direction = Store.getDirection();
+let simple = Store.getSimple();
 
 const COPY = {
   long: {
@@ -13,6 +14,8 @@ const COPY = {
     smasHead: "SMAs+",
     smasTitle: "Price above SMA count",
     trendTitle: "W+M above 200 SMA or 5+/6 bull",
+    atSmaHead: "At 100",
+    atSmaTitle: "Daily within ±3% of 100 SMA",
     wasExtHead: "Was high",
     wasExtTitle: "Was ≥5% above daily 100 SMA in last ~4 weeks",
     patternAHead: "Hammer",
@@ -42,6 +45,8 @@ const COPY = {
     smasHead: "SMAs−",
     smasTitle: "Price below SMA count",
     trendTitle: "W+M below 200 SMA or 5+/6 bear",
+    atSmaHead: "At 100",
+    atSmaTitle: "Daily within ±3% of 100 SMA",
     wasExtHead: "Was low",
     wasExtTitle: "Was ≥5% below daily 100 SMA in last ~4 weeks",
     patternAHead: "Star",
@@ -63,23 +68,83 @@ const COPY = {
       ["weak", "Weak trend"],
     ],
   },
+  simple: {
+    pageTitle: "Simple Watch",
+    scanScope: "Bull trends dipping to the daily 200 SMA — about to bounce",
+    panelTitle: "200 SMA bounces",
+    setupGroup: "Setup",
+    smasHead: "SMAs+",
+    smasTitle: "Price above SMA count",
+    trendTitle: "Weekly & monthly above 200 SMA, or 5+/6 SMAs bullish",
+    atSmaHead: "At 200",
+    atSmaTitle: "Daily within ±3% of 200 SMA",
+    wasExtHead: "Was high",
+    wasExtTitle: "Was ≥5% above daily 200 SMA in last ~4 weeks",
+    patternAHead: "",
+    patternATitle: "",
+    patternBHead: "",
+    patternBTitle: "",
+    volTitle: "",
+    recentExtHead: "",
+    recentExtTitle: "",
+    stopTitle: "",
+    gainTitle: "",
+    signalOptions: [
+      ["", "All"],
+      ["bounce", "Bounce"],
+      ["near-200", "Near 200"],
+      ["trend-ok", "Trend OK"],
+      ["extended", "Extended"],
+      ["mixed", "Mixed"],
+      ["weak", "Weak trend"],
+    ],
+  },
 };
 
 function isShort() {
-  return direction === "short";
+  return !simple && direction === "short";
+}
+
+function isSimple() {
+  return simple;
 }
 
 function copy() {
+  if (isSimple()) return COPY.simple;
   return COPY[direction];
+}
+
+function viewParam() {
+  return isSimple() ? "simple" : "full";
+}
+
+function atSmaCheck(signal) {
+  if (isSimple()) return !!signal.checks?.at200Sma;
+  if (isShort()) return !!signal.checks?.at100Sma;
+  return !!signal.checks?.at100Sma;
 }
 
 function signalMetrics(signal) {
   const p = signal.patterns ?? {};
+  if (isSimple()) {
+    return {
+      smas: signal.bull?.above ?? 0,
+      smasTotal: signal.bull?.total ?? 0,
+      wasExtendedRecently: !!signal.checks?.wasHigherRecently,
+      atSma: !!signal.checks?.at200Sma,
+      patternA: false,
+      patternB: false,
+      volumeOk: false,
+      recentExtreme: signal.maxRecentAbove200,
+      doubleBottom: false,
+    };
+  }
   if (isShort()) {
     return {
       smas: signal.bear?.below ?? 0,
       smasTotal: signal.bear?.total ?? 0,
       wasExtendedRecently: !!signal.checks?.wasLowerRecently,
+      atSma: !!signal.checks?.at100Sma,
       patternA: !!p.shootingStar,
       patternB: !!p.rallyStreak,
       volumeOk: !!p.volumeOk,
@@ -91,6 +156,7 @@ function signalMetrics(signal) {
     smas: signal.bull?.above ?? 0,
     smasTotal: signal.bull?.total ?? 0,
     wasExtendedRecently: !!signal.checks?.wasHigherRecently,
+    atSma: !!signal.checks?.at100Sma,
     patternA: !!p.hammer,
     patternB: !!p.pullbackStreak,
     volumeOk: !!p.volumeOk,
@@ -126,7 +192,9 @@ function pctClass(value) {
 function signalClass(label) {
   if (label.startsWith("Pullback")) return "pullback";
   if (label.startsWith("Rally")) return "rally";
+  if (label.startsWith("Bounce")) return "bounce";
   if (label.startsWith("Near 100")) return "near-100";
+  if (label.startsWith("Near 200")) return "near-200";
   if (label === "Trend OK") return "trend-ok";
   if (label === "Extended") return "extended";
   if (label === "Extended down") return "extended-down";
@@ -145,17 +213,19 @@ function checkMark(ok) {
 function renderChecks(signal) {
   const c = signal.checks;
   const cp = copy();
+  const m = signalMetrics(signal);
   const wasExt = isShort() ? c.wasLowerRecently : c.wasHigherRecently;
   return `
     <td class="check-cell" title="${cp.trendTitle}">${checkMark(c.trendOk)}</td>
-    <td class="check-cell" title="Daily within ±3% of 100 SMA">${checkMark(c.at100Sma)}</td>
+    <td class="check-cell" title="${cp.atSmaTitle}">${checkMark(m.atSma)}</td>
     <td class="check-cell" title="${cp.wasExtTitle}">${checkMark(wasExt)}</td>
   `;
 }
 
-function smaCell(stock, pct) {
-  const highlight = stock.signal.watch || stock.signal.checks.at100Sma;
-  return `<td class="sma-cell ${pctClass(pct)}${highlight ? " pullback-focus" : ""}">${fmtPct(pct)}</td>`;
+function smaCell(stock, pct, focus = false) {
+  const m = signalMetrics(stock.signal);
+  const highlight = focus && (stock.signal.watch || m.atSma);
+  return `<td class="sma-cell ${pctClass(pct)}${highlight ? " pullback-focus" : ""}${focus ? "" : " detail-col"}">${fmtPct(pct)}</td>`;
 }
 
 function dbTitle(db) {
@@ -181,30 +251,32 @@ function dbMark(db) {
 }
 
 function renderPatternChecks(signal) {
+  if (isSimple()) return "";
   const cp = copy();
   const m = signalMetrics(signal);
   const db = signal.doubleBottom;
-  const patternA = isShort()
-    ? `<td class="check-cell" title="${cp.patternATitle}">${checkMark(m.patternA)}</td>`
-    : `<td class="check-cell" title="${cp.patternATitle}">${checkMark(m.patternA)}</td>`;
-  const patternB = `<td class="check-cell" title="${cp.patternBTitle}">${checkMark(m.patternB)}</td>`;
-  const vol = `<td class="check-cell" title="${cp.volTitle}">${checkMark(m.volumeOk)}</td>`;
+  const patternA = `<td class="check-cell detail-col" title="${cp.patternATitle}">${checkMark(m.patternA)}</td>`;
+  const patternB = `<td class="check-cell detail-col" title="${cp.patternBTitle}">${checkMark(m.patternB)}</td>`;
+  const vol = `<td class="check-cell detail-col" title="${cp.volTitle}">${checkMark(m.volumeOk)}</td>`;
   const dbCell = isShort()
     ? ""
-    : `<td class="check-cell long-only-col" title="${dbTitle(db)}">${dbMark(db)}</td>`;
+    : `<td class="check-cell detail-col long-only-col" title="${dbTitle(db)}">${dbMark(db)}</td>`;
   return patternA + patternB + vol + dbCell;
 }
 
 function levelCells(signal) {
+  if (isSimple()) return "";
   const lv = signal.levels;
   const cp = copy();
-  if (!lv) return `<td class="lvl">—</td><td class="lvl">—</td><td class="lvl">—</td>`;
+  if (!lv) {
+    return `<td class="lvl detail-col">—</td><td class="lvl detail-col">—</td><td class="lvl detail-col">—</td>`;
+  }
   const stopTitle = `Stop ${fmtMoney(lv.stop)} (${lv.riskPct}% risk)`;
   const tgtTitle = `Target ${fmtMoney(lv.target)} (${lv.rr}× risk)`;
   return (
-    `<td class="lvl lvl-stop" title="${stopTitle}">${fmtMoney(lv.stop)}</td>` +
-    `<td class="lvl lvl-target" title="${tgtTitle}">${fmtMoney(lv.target)}</td>` +
-    `<td class="lvl lvl-gain" title="${cp.gainTitle}">+${lv.rewardPct.toFixed(1)}%</td>`
+    `<td class="lvl lvl-stop detail-col" title="${stopTitle}">${fmtMoney(lv.stop)}</td>` +
+    `<td class="lvl lvl-target detail-col" title="${tgtTitle}">${fmtMoney(lv.target)}</td>` +
+    `<td class="lvl lvl-gain detail-col" title="${cp.gainTitle}">+${lv.rewardPct.toFixed(1)}%</td>`
   );
 }
 
@@ -216,6 +288,9 @@ function renderRow(stock) {
   const rowClass = `${s.watch ? "stock-row watch-row" : "stock-row"}${stock.pinned ? " pinned-row" : ""}`;
   const star = stock.pinned ? "★" : "☆";
   const pinTitle = stock.pinned ? "Remove from your watchlist" : "Add to your watchlist";
+  const recentCell = isSimple()
+    ? ""
+    : `<td class="recent-high detail-col" title="${cp.recentExtTitle}">${fmtPct(m.recentExtreme)}</td>`;
   return `
     <tr class="${rowClass}" data-href="/stock?symbol=${encodeURIComponent(stock.symbol)}">
       <td class="stock-name">
@@ -224,16 +299,16 @@ function renderRow(stock) {
         <span class="name">${stock.name}</span>
       </td>
       <td>${fmtMoney(stock.price)}</td>
-      ${smaCell(stock, c["1d"].vs_sma100_pct)}
-      ${smaCell(stock, c["1d"].vs_sma200_pct)}
+      ${smaCell(stock, c["1d"].vs_sma100_pct, !isSimple())}
+      ${smaCell(stock, c["1d"].vs_sma200_pct, isSimple())}
       ${smaCell(stock, c["1wk"].vs_sma100_pct)}
       ${smaCell(stock, c["1wk"].vs_sma200_pct)}
       ${smaCell(stock, c["1mo"].vs_sma100_pct)}
       ${smaCell(stock, c["1mo"].vs_sma200_pct)}
-      <td class="score trend-score" title="${cp.smasTitle}">${m.smas}/${m.smasTotal}</td>
+      <td class="score trend-score detail-col" title="${cp.smasTitle}">${m.smas}/${m.smasTotal}</td>
       ${renderChecks(s)}
       ${renderPatternChecks(s)}
-      <td class="recent-high" title="${cp.recentExtTitle}">${fmtPct(m.recentExtreme)}</td>
+      ${recentCell}
       ${levelCells(s)}
       <td><span class="signal-pill ${signalClass(s.label)}">${s.label}</span></td>
     </tr>
@@ -246,25 +321,28 @@ function setStatus(text, kind = "live") {
   badge.className = `badge ${kind}`;
 }
 
-function updateDirectionUI() {
+function updateViewUI() {
   const cp = copy();
-  document.body.dataset.direction = direction;
+  document.body.dataset.view = isSimple() ? "simple" : "full";
+  document.body.dataset.direction = isSimple() ? "long" : direction;
   document.getElementById("page-title").textContent = cp.pageTitle;
   document.getElementById("scan-scope").textContent = cp.scanScope;
   document.getElementById("panel-title").textContent = cp.panelTitle;
   document.getElementById("setup-group-head").textContent = cp.setupGroup;
   document.getElementById("smas-head").textContent = cp.smasHead;
   document.getElementById("trend-head").title = cp.trendTitle;
+  document.getElementById("at-sma-head").textContent = cp.atSmaHead;
+  document.getElementById("at-sma-head").title = cp.atSmaTitle;
   document.getElementById("was-ext-head").textContent = cp.wasExtHead;
   document.getElementById("was-ext-head").title = cp.wasExtTitle;
-  document.getElementById("pattern-a-head").textContent = cp.patternAHead;
-  document.getElementById("pattern-a-head").title = cp.patternATitle;
-  document.getElementById("pattern-b-head").textContent = cp.patternBHead;
-  document.getElementById("pattern-b-head").title = cp.patternBTitle;
-  document.querySelector('[data-sort="volumeOk"]').title = cp.volTitle;
-  document.getElementById("recent-ext-head").textContent = cp.recentExtHead;
-  document.getElementById("stop-head").title = cp.stopTitle;
-  document.getElementById("gain-head").title = cp.gainTitle;
+  const volHead = document.querySelector('[data-sort="volumeOk"]');
+  if (volHead) volHead.title = cp.volTitle;
+  const recentHead = document.getElementById("recent-ext-head");
+  if (recentHead) recentHead.textContent = cp.recentExtHead;
+  const stopHead = document.getElementById("stop-head");
+  if (stopHead) stopHead.title = cp.stopTitle;
+  const gainHead = document.getElementById("gain-head");
+  if (gainHead) gainHead.title = cp.gainTitle;
 
   const signalFilter = document.getElementById("signal-filter");
   const prev = signalFilter.value;
@@ -274,9 +352,8 @@ function updateDirectionUI() {
   if (cp.signalOptions.some(([value]) => value === prev)) signalFilter.value = prev;
   else signalFilter.value = "";
 
-  document.querySelectorAll("#direction-toggle .dir-btn").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.direction === direction);
-  });
+  document.getElementById("direction-toggle").hidden = isSimple();
+  document.getElementById("filter-simple").checked = isSimple();
 }
 
 function wireRows() {
@@ -330,7 +407,7 @@ function passesFilters(stock, f) {
 
   const boolByKey = {
     trendOk: s.checks.trendOk,
-    at100Sma: s.checks.at100Sma,
+    atSma: m.atSma,
     wasExtendedRecently: m.wasExtendedRecently,
     patternA: m.patternA,
     patternB: m.patternB,
@@ -375,7 +452,10 @@ function sortValue(stock, key) {
     case "gain": return s.levels?.rewardPct;
     case "signal": return s.score;
     case "trendOk": return s.checks.trendOk ? 1 : 0;
-    case "at100Sma": return s.checks.at100Sma ? 1 : 0;
+    case "atSma":
+    case "at100Sma":
+    case "at200Sma":
+      return m.atSma ? 1 : 0;
     case "wasExtendedRecently": return m.wasExtendedRecently ? 1 : 0;
     case "patternA": return m.patternA ? 1 : 0;
     case "patternB": return m.patternB ? 1 : 0;
@@ -446,7 +526,7 @@ async function loadWatchlistStocks() {
   if (!syms.length) return [];
   try {
     const res = await fetch(
-      `/api/analyze?symbols=${encodeURIComponent(syms.join(","))}&direction=${direction}`
+      `/api/analyze?symbols=${encodeURIComponent(syms.join(","))}&direction=${direction}&view=${viewParam()}`
     );
     const p = await res.json();
     return (p.stocks ?? []).map((s) => ({ ...s, pinned: true }));
@@ -470,7 +550,7 @@ async function refresh() {
   try {
     await seedWatchlist();
     const [ov, pins] = await Promise.all([
-      fetch(`/api/overview?direction=${direction}`).then((r) => {
+      fetch(`/api/overview?direction=${direction}&view=${viewParam()}`).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
@@ -556,14 +636,28 @@ function wireDirectionToggle() {
       if (next === direction) return;
       direction = next;
       Store.setDirection(direction);
-      updateDirectionUI();
+      updateViewUI();
       setStatus("Loading…", "loading");
       refresh();
     });
   });
 }
 
-updateDirectionUI();
+function wireSimpleToggle() {
+  const box = document.getElementById("filter-simple");
+  box.checked = simple;
+  box.addEventListener("change", () => {
+    simple = box.checked;
+    Store.setSimple(simple);
+    if (simple) direction = "long";
+    updateViewUI();
+    setStatus("Loading…", "loading");
+    refresh();
+  });
+}
+
+updateViewUI();
+wireSimpleToggle();
 wireDirectionToggle();
 wireFilters();
 wireSort();

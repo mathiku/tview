@@ -338,6 +338,85 @@ export function normalizeDirection(raw) {
   return raw === "short" ? "short" : "long";
 }
 
+export function normalizeView(raw) {
+  return raw === "simple" ? "simple" : "full";
+}
+
+/** Bull trend + daily tag of 200 SMA after a recent stretch higher — the simple view. */
+export function scoreSimple200(dailyRows, comparison) {
+  const dailyData = buildSeries(dailyRows, "1d");
+  const bullishChecks = bullChecks(comparison);
+  const bullAbove = bullishChecks.filter((c) => c.above).length;
+  const bullTotal = bullishChecks.length;
+
+  const dailyVs200 = comparison["1d"].vs_sma200_pct;
+  const wk200 = comparison["1wk"].vs_sma200_pct;
+  const mo200 = comparison["1mo"].vs_sma200_pct;
+
+  const trendOk =
+    (wk200 != null && wk200 > 0 && mo200 != null && mo200 > 0) ||
+    bullAbove >= PULLBACK_MIN_BULL_CHECKS;
+
+  const at200Sma =
+    dailyVs200 != null &&
+    dailyVs200 <= PULLBACK_NEAR_PCT &&
+    dailyVs200 >= -PULLBACK_NEAR_PCT;
+
+  let maxRecentAbove200 = null;
+  let wasHigherRecently = false;
+  const recentSlice = dailyData.slice(-PULLBACK_RECENT_DAYS - 1, -1);
+
+  for (const point of recentSlice) {
+    const pct = pctVs(point.close, point.sma200);
+    if (pct == null) continue;
+    if (maxRecentAbove200 == null || pct > maxRecentAbove200) {
+      maxRecentAbove200 = pct;
+    }
+    if (pct >= PULLBACK_MIN_PRIOR_ABOVE_PCT) wasHigherRecently = true;
+  }
+
+  const watch = trendOk && at200Sma && wasHigherRecently;
+
+  let score = 0;
+  if (watch) {
+    score = 100 + bullAbove;
+    if (dailyVs200 >= 0) score += 2;
+    else if (dailyVs200 >= -1) score += 1;
+    score += Math.max(0, PULLBACK_NEAR_PCT - Math.abs(dailyVs200));
+  } else {
+    if (trendOk) score += 30;
+    if (at200Sma) score += 20;
+    if (wasHigherRecently) score += 10;
+    score += bullAbove;
+  }
+
+  let label = "Weak trend";
+  if (watch) {
+    if (dailyVs200 < 0) label = "Bounce · at 200";
+    else if (dailyVs200 <= 1) label = "Bounce · touch";
+    else label = "Bounce · near 200";
+  } else if (trendOk && at200Sma) {
+    label = "Near 200 · no dip";
+  } else if (trendOk && wasHigherRecently) {
+    label = "Trend OK";
+  } else if (bullAbove >= PULLBACK_MIN_BULL_CHECKS) {
+    label = "Extended";
+  } else if (bullAbove >= 3) {
+    label = "Mixed";
+  }
+
+  return {
+    watch,
+    score,
+    label,
+    bull: { above: bullAbove, total: bullTotal },
+    dailyVs200,
+    maxRecentAbove200: maxRecentAbove200 != null ? round2(maxRecentAbove200) : null,
+    checks: { trendOk, at200Sma, wasHigherRecently },
+    view: "simple",
+  };
+}
+
 /** Uptrend intact + daily tag of 100 SMA after a recent stretch higher. */
 export function scorePullback(dailyRows, comparison, opts = {}) {
   const dailyData = buildSeries(dailyRows, "1d");
@@ -680,12 +759,13 @@ export async function buildScanUniverse() {
 }
 
 /** Analyse a caller-supplied list of symbols (a user's watchlist). */
-export async function analyzeSymbols(symbols, direction = "long") {
+export async function analyzeSymbols(symbols, direction = "long", view = "full") {
   const session = sessionKey();
   const dir = normalizeDirection(direction);
+  const v = normalizeView(view);
   const items = symbols.map((s) => s.toUpperCase());
   return mapPool(items, FETCH_CONCURRENCY, async (sym) => {
-    const { comparison, signal } = await loadStockAnalysis(sym, session, dir);
+    const { comparison, signal } = await loadStockAnalysis(sym, session, dir, v);
     const stock = BIG_STOCK_BY_SYMBOL.get(sym);
     return {
       symbol: sym,
@@ -733,19 +813,23 @@ async function mapPool(items, concurrency, fn) {
   return results.filter(Boolean);
 }
 
-function scoreForDirection(dailyRows, comparison, direction) {
+function scoreForView(dailyRows, comparison, direction, view) {
+  if (normalizeView(view) === "simple") return scoreSimple200(dailyRows, comparison);
   return direction === "short"
     ? scoreRallyShort(dailyRows, comparison)
     : scorePullback(dailyRows, comparison);
 }
 
-function signalCacheKey(session, direction) {
-  return `${session}:${direction}`;
+function signalCacheKey(session, direction, view) {
+  const v = normalizeView(view);
+  if (v === "simple") return `${session}:simple`;
+  return `${session}:${normalizeDirection(direction)}`;
 }
 
-async function loadStockAnalysis(symbol, session, direction = "long") {
+async function loadStockAnalysis(symbol, session, direction = "long", view = "full") {
   const dir = normalizeDirection(direction);
-  const cacheKey = signalCacheKey(session, dir);
+  const v = normalizeView(view);
+  const cacheKey = signalCacheKey(session, dir, v);
   const cached = cache.get(symbol);
   if (cached?.signals?.[cacheKey]) {
     return { comparison: cached.comparison, signal: cached.signals[cacheKey] };
@@ -757,17 +841,18 @@ async function loadStockAnalysis(symbol, session, direction = "long") {
   const comparison = cached?.comparison && cached.session === session
     ? cached.comparison
     : buildComparison(dailyRows);
-  const signal = scoreForDirection(dailyRows, comparison, dir);
+  const signal = scoreForView(dailyRows, comparison, dir, v);
   const signals = { ...(cached?.signals ?? {}), [cacheKey]: signal };
 
   setMem(symbol, { ...cached, session, comparison, dailyRows, signals });
   return { comparison, signal };
 }
 
-export async function getPayload(symbol, direction = "long") {
+export async function getPayload(symbol, direction = "long", view = "full") {
   const session = sessionKey();
   const dir = normalizeDirection(direction);
-  const payloadKey = signalCacheKey(session, dir);
+  const v = normalizeView(view);
+  const payloadKey = signalCacheKey(session, dir, v);
   const cached = cache.get(symbol);
   if (cached?.payloads?.[payloadKey]) return cached.payloads[payloadKey];
 
@@ -794,9 +879,10 @@ export async function getPayload(symbol, direction = "long") {
     updated_at: new Date().toISOString(),
     asOf: session,
     direction: dir,
+    view: v,
     charts,
     comparison,
-    signal: scoreForDirection(dailyRows, comparison, dir),
+    signal: scoreForView(dailyRows, comparison, dir, v),
   };
 
   const payloads = { ...(cached?.payloads ?? {}), [payloadKey]: payload };
@@ -804,24 +890,27 @@ export async function getPayload(symbol, direction = "long") {
   return payload;
 }
 
-function sortOverviewStocks(stocks) {
+function sortOverviewStocks(stocks, view = "full") {
   stocks.sort((a, b) => {
     if (Number(b.pinned) !== Number(a.pinned)) return Number(b.pinned) - Number(a.pinned);
     if (Number(b.signal.watch) !== Number(a.signal.watch)) {
       return Number(b.signal.watch) - Number(a.signal.watch);
     }
-    const patDiff = (b.signal.patterns?.count ?? 0) - (a.signal.patterns?.count ?? 0);
-    if (patDiff !== 0) return patDiff;
+    if (normalizeView(view) !== "simple") {
+      const patDiff = (b.signal.patterns?.count ?? 0) - (a.signal.patterns?.count ?? 0);
+      if (patDiff !== 0) return patDiff;
+    }
     if (b.signal.score !== a.signal.score) return b.signal.score - a.signal.score;
     return a.symbol.localeCompare(b.symbol);
   });
   return stocks;
 }
 
-async function buildOverviewPayload(universe, session, direction, scanMeta) {
+async function buildOverviewPayload(universe, session, direction, scanMeta, view = "full") {
   const dir = normalizeDirection(direction);
+  const v = normalizeView(view);
   const stocks = await mapPool(universe, FETCH_CONCURRENCY, async (stock) => {
-    const { comparison, signal } = await loadStockAnalysis(stock.symbol, session, dir);
+    const { comparison, signal } = await loadStockAnalysis(stock.symbol, session, dir, v);
     return {
       symbol: stock.symbol,
       name: stock.name,
@@ -832,12 +921,13 @@ async function buildOverviewPayload(universe, session, direction, scanMeta) {
     };
   });
 
-  sortOverviewStocks(stocks);
+  sortOverviewStocks(stocks, v);
 
   return {
     updated_at: new Date().toISOString(),
     asOf: session,
-    direction: dir,
+    direction: v === "simple" ? "long" : dir,
+    view: v,
     total: stocks.length,
     scanned: universe.length,
     pinnedCount: scanMeta.pinnedCount,
@@ -852,29 +942,40 @@ async function refreshOverview(session) {
   const scanMeta = await buildScanUniverse();
   const { universe } = scanMeta;
 
-  const [longPayload, shortPayload] = await Promise.all([
-    buildOverviewPayload(universe, session, "long", scanMeta),
-    buildOverviewPayload(universe, session, "short", scanMeta),
+  const [longPayload, shortPayload, simplePayload] = await Promise.all([
+    buildOverviewPayload(universe, session, "long", scanMeta, "full"),
+    buildOverviewPayload(universe, session, "short", scanMeta, "full"),
+    buildOverviewPayload(universe, session, "long", scanMeta, "simple"),
   ]);
 
-  const snapshot = { sessionKey: session, long: longPayload, short: shortPayload };
+  const snapshot = { sessionKey: session, long: longPayload, short: shortPayload, simple: simplePayload };
   overviewSnapshot = snapshot;
-  await writeOverviewSnapshot(session, { long: longPayload, short: shortPayload });
+  await writeOverviewSnapshot(session, {
+    long: longPayload,
+    short: shortPayload,
+    simple: simplePayload,
+  });
   return snapshot;
 }
 
-function overviewPayloadForDirection(snapshot, direction) {
+function overviewPayloadForView(snapshot, direction, view) {
   const dir = normalizeDirection(direction);
+  const v = normalizeView(view);
   let payload = null;
-  if (snapshot?.long && snapshot?.short) {
+  if (v === "simple") {
+    payload = snapshot?.simple ?? null;
+  } else if (snapshot?.long && snapshot?.short) {
     payload = dir === "short" ? snapshot.short : snapshot.long;
   } else if (snapshot?.long) {
     payload = dir === "long" ? snapshot.long : null;
   } else {
     payload = snapshot?.payload ?? null;
   }
-  if (payload && payload.direction !== dir) {
-    return { ...payload, direction: dir };
+  if (payload) {
+    const patched = { ...payload, view: v };
+    if (v === "simple") patched.direction = "long";
+    else if (patched.direction !== dir) patched.direction = dir;
+    return patched;
   }
   return payload;
 }
@@ -885,16 +986,22 @@ function overviewPayloadForDirection(snapshot, direction) {
  * zero fetching. When a new session appears we return the stale snapshot
  * immediately and revalidate in the background (stale-while-revalidate).
  */
-export async function getOverview(direction = "long") {
+export async function getOverview(direction = "long", view = "full") {
   const session = sessionKey();
   const dir = normalizeDirection(direction);
+  const v = normalizeView(view);
 
   if (!overviewSnapshotLoaded) {
     const disk = await readOverviewSnapshot();
     if (disk?.long && disk?.short) {
-      overviewSnapshot = { sessionKey: disk.sessionKey, long: disk.long, short: disk.short };
+      overviewSnapshot = {
+        sessionKey: disk.sessionKey,
+        long: disk.long,
+        short: disk.short,
+        simple: disk.simple ?? null,
+      };
     } else if (disk?.payload) {
-      overviewSnapshot = { sessionKey: disk.sessionKey, long: disk.payload, short: null };
+      overviewSnapshot = { sessionKey: disk.sessionKey, long: disk.payload, short: null, simple: null };
     } else {
       overviewSnapshot = disk;
     }
@@ -910,21 +1017,26 @@ export async function getOverview(direction = "long") {
           overviewRefreshing = false;
         });
     }
-    let payload = overviewPayloadForDirection(overviewSnapshot, dir);
+    let payload = overviewPayloadForView(overviewSnapshot, dir, v);
     if (payload) return payload;
-    if (dir === "short" && overviewSnapshot.long && !overviewSnapshot.short) {
+    if (v === "simple" && !overviewSnapshot.simple) {
       const scanMeta = await buildScanUniverse();
-      payload = await buildOverviewPayload(scanMeta.universe, session, "short", scanMeta);
+      payload = await buildOverviewPayload(scanMeta.universe, session, "long", scanMeta, "simple");
+      overviewSnapshot = { ...overviewSnapshot, simple: payload };
+      return payload;
+    }
+    if (v !== "simple" && dir === "short" && overviewSnapshot.long && !overviewSnapshot.short) {
+      const scanMeta = await buildScanUniverse();
+      payload = await buildOverviewPayload(scanMeta.universe, session, "short", scanMeta, "full");
       overviewSnapshot = { ...overviewSnapshot, short: payload };
       return payload;
     }
   }
 
-  // No snapshot at all (fresh install, nothing committed) → compute synchronously.
   overviewRefreshing = true;
   try {
     const snapshot = await refreshOverview(session);
-    return overviewPayloadForDirection(snapshot, dir);
+    return overviewPayloadForView(snapshot, dir, v);
   } finally {
     overviewRefreshing = false;
   }
