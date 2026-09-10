@@ -48,6 +48,10 @@ app.get("/backtest", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "backtest.html"));
 });
 
+app.get("/bestpick", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "bestpick.html"));
+});
+
 app.get("/api/stocks", async (_req, res) => {
   try {
     res.json({
