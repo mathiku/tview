@@ -1328,3 +1328,262 @@ select.col-filter {
   min-height: 1rem;
 }
 .bt-nl-note.error { color: var(--negative); }
+
+/* ---- Best Pick page ---- */
+.bestpick-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-height: calc(100vh - 88px);
+}
+
+.bestpick-panel {
+  align-self: start;
+}
+
+.pick-content {
+  padding: 0 1rem 1rem;
+}
+
+.loading-state {
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.pick-hero {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pick-symbol-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.pick-symbol {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.pick-name {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.pick-chart-link {
+  color: var(--sma100);
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.pick-chart-link:hover {
+  text-decoration: underline;
+}
+
+.pick-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pick-level {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.pick-level-entry {
+  border-left: 3px solid #3b82f6;
+}
+
+.pick-level-stop {
+  border-left: 3px solid #f87171;
+}
+
+.pick-level-target {
+  border-left: 3px solid #34d399;
+}
+
+.pick-level-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.pick-level-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pick-level-entry .pick-level-value {
+  color: #3b82f6;
+}
+
+.pick-level-stop .pick-level-value {
+  color: #f87171;
+}
+
+.pick-level-target .pick-level-value {
+  color: #34d399;
+}
+
+.pick-level-meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.pick-why {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.pick-why h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.pick-why p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.pick-signal-label {
+  margin: 1rem 0 0;
+}
+
+.pick-sizing {
+  padding: 1.5rem 0;
+}
+
+.pick-sizing h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.pick-sizing-note {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.pick-sizing-note.small {
+  font-size: 0.8rem;
+  margin-top: 1rem;
+}
+
+.pick-sizing-values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.pick-sizing-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.pick-sizing-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.pick-sizing-value {
+  font-size: 1.25rem;
+  font-weight: 650;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.pick-empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.pick-empty h3 {
+  margin: 0 0 1rem;
+  font-size: 1.3rem;
+  color: var(--text);
+}
+
+.pick-empty p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.pick-empty a {
+  color: var(--sma100);
+  text-decoration: none;
+}
+
+.pick-empty a:hover {
+  text-decoration: underline;
+}
+
+.bestpick-disclaimer {
+  background: #1a1515;
+  border-color: #4a2020;
+  align-self: start;
+}
+
+.disclaimer-content {
+  padding: 0 1rem 1rem;
+}
+
+.disclaimer-content p {
+  margin: 0 0 0.75rem;
+  color: #d1a0a0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.disclaimer-content p:last-child {
+  margin-bottom: 0;
+}
+
+.disclaimer-content strong {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .pick-hero {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .pick-symbol {
+    font-size: 2rem;
+  }
+  
+  .pick-sizing-values {
+    grid-template-columns: 1fr;
+  }
+}
