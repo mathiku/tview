@@ -855,11 +855,37 @@ th {
 .th-label {
   display: block;
 }
+.filter-wrap {
+  display: flex;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+}
+.filter-op {
+  flex: 0 0 auto;
+  background: #1a1f2a;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 5px 0 0 5px;
+  padding: 0.24rem 0.35rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  min-width: 24px;
+  text-align: center;
+  transition: background 0.1s, color 0.1s;
+}
+.filter-op:hover {
+  background: #242b38;
+  color: var(--text);
+}
+.filter-op.active {
+  background: #2b3a4f;
+  color: #9fc3ff;
+  border-color: #3d5573;
+}
 .col-filter {
   display: block;
   width: 100%;
   min-width: 46px;
-  margin-top: 0.3rem;
   background: #0f1117;
   color: var(--text);
   border: 1px solid var(--border);
@@ -868,6 +894,13 @@ th {
   font-size: 0.72rem;
   text-transform: none;
   letter-spacing: 0;
+}
+.filter-wrap .col-filter {
+  flex: 1 1 0;
+  min-width: 32px;
+  margin-top: 0;
+  border-radius: 0 5px 5px 0;
+  border-left: none;
 }
 .col-filter::placeholder {
   color: #4b5563;

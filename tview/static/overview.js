@@ -392,7 +392,13 @@ function passesFilters(stock, f) {
     gain: s.levels?.rewardPct,
   };
   for (const k in nums) {
-    if (f[k] != null && (nums[k] == null || nums[k] < f[k])) return false;
+    if (f[k] != null) {
+      const op = f[`${k}_op`] || "gte";
+      const value = nums[k];
+      if (value == null) return false;
+      if (op === "lte" && value > f[k]) return false;
+      if (op === "gte" && value < f[k]) return false;
+    }
   }
 
   if (f.text) {
@@ -625,8 +631,37 @@ function wireFilters() {
     document.querySelectorAll(".col-filter").forEach((i) => (i.value = ""));
     document.querySelectorAll(".chk-filter input").forEach((b) => (b.checked = false));
     watch.checked = false;
+    updateFilterOpButtons();
     render();
   });
+}
+
+function updateFilterOpButtons() {
+  const filters = Store.getFilters();
+  document.querySelectorAll(".filter-op").forEach((btn) => {
+    const key = btn.dataset.key;
+    const op = filters[`${key}_op`] || "gte";
+    btn.textContent = op === "lte" ? "≤" : "≥";
+    btn.classList.toggle("active", filters[key] != null);
+    const inp = btn.nextElementSibling;
+    if (inp) inp.placeholder = op === "lte" ? "≤" : "≥";
+  });
+}
+
+function wireFilterOps() {
+  document.querySelectorAll(".filter-op").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      const f = Store.getFilters();
+      const currentOp = f[`${key}_op`] || "gte";
+      const newOp = currentOp === "gte" ? "lte" : "gte";
+      f[`${key}_op`] = newOp;
+      Store.setFilters(f);
+      updateFilterOpButtons();
+      render();
+    });
+  });
+  updateFilterOpButtons();
 }
 
 function wireDirectionToggle() {
@@ -660,6 +695,7 @@ updateViewUI();
 wireSimpleToggle();
 wireDirectionToggle();
 wireFilters();
+wireFilterOps();
 wireSort();
 refresh();
 setInterval(refresh, REFRESH_MS);
