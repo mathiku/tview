@@ -123,6 +123,10 @@ body[data-direction="short"] .long-only-col {
   display: none;
 }
 
+body[data-direction="long"] .short-only-col {
+  display: none;
+}
+
 body[data-view="simple"] .detail-col {
   display: none;
 }
@@ -306,6 +310,22 @@ a#tv-attr-logo {
   background: rgba(91, 112, 137, 0.06);
 }
 
+/* Double-top bounding box drawn over the daily chart. */
+.signal-box-top {
+  position: absolute;
+  pointer-events: none;
+  border: 1px dashed #f472b6;
+  background: rgba(244, 114, 182, 0.08);
+  border-radius: 3px;
+  z-index: 2;
+}
+
+/* A double top that already broke down — shown dimmed, for reference only. */
+.signal-box-top.occurred {
+  border-color: #78716c;
+  background: rgba(120, 113, 108, 0.06);
+}
+
 /* Single shared legend bar above the charts. */
 .chart-legend {
   display: flex;
@@ -483,6 +503,18 @@ th {
 .check.db-occurred {
   background: #2e2708;
   color: #facc15;
+}
+
+/* 2T on the last leg now — highlighted pink to match the chart box. */
+.check.dt-current {
+  background: #381429;
+  color: #f472b6;
+}
+
+/* 2T that broke down earlier — gray marker, informational only. */
+.check.dt-occurred {
+  background: #27272a;
+  color: #d4d4d8;
 }
 
 .check-legend {
@@ -1620,3 +1652,115 @@ select.col-filter {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Hidden signals dropdown ──────────────────────────────────────────────── */
+.hidden-signals-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.hidden-signals-dropdown summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.hidden-signals-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.hidden-signals-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  min-width: 250px;
+  max-width: 400px;
+  padding: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+#hidden-signals-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  min-height: 2rem;
+}
+
+.hidden-signal-item {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.hidden-signal-item:hover {
+  opacity: 1;
+}
+
+.muted-hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* ── Column selector and visibility ───────────────────────────────────────── */
+.column-selector-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.column-selector-dropdown summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.column-selector-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.column-selector-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  min-width: 200px;
+  padding: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+
+#column-selector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.column-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.column-toggle input {
+  cursor: pointer;
+}
+
+/* Hide columns based on body classes */
+body.hide-col-d100 .col-d100 { display: none; }
+body.hide-col-d200 .col-d200 { display: none; }
+body.hide-col-w100 .col-w100 { display: none; }
+body.hide-col-w200 .col-w200 { display: none; }
+body.hide-col-m100 .col-m100 { display: none; }
+body.hide-col-m200 .col-m200 { display: none; }
+body.hide-col-smas .col-smas { display: none; }
+body.hide-col-patterns .col-patterns { display: none; }
+body.hide-col-2b .col-2b { display: none; }
+body.hide-col-recent .col-recent { display: none; }
+body.hide-col-levels .col-levels { display: none; }

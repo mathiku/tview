@@ -111,6 +111,115 @@ export function detectDoubleBottom(
   };
 }
 
+/**
+ * Double-top ("M"): two similar swing highs separated by a valley (the
+ * neckline), with price now falling back down through that neckline. Scans the
+ * recent window and returns the most recent valid formation.
+ *
+ * state = "false"    — no valid double top in the window.
+ *         "current"  — price has just fallen back through the neckline (within
+ *                      the last `currentMaxBars` bars): we are on the pattern's
+ *                      last leg right now. This is the actionable one.
+ *         "occurred" — a double top broke down earlier and price has moved on;
+ *                      informational only (see `barsSinceBreakout`).
+ *
+ * match   = price has fallen back to/through the neckline ("on the way down").
+ * breakout = price is strictly below the neckline (confirmed).
+ * barsSinceBreakout = trading bars since the neckline was broken (0 = today),
+ *                     or null while price is still above the neckline.
+ */
+export function detectDoubleTop(
+  rows,
+  {
+    window = 90,
+    swingK = 4,
+    similarPct = 3,
+    minDepthPct = 5,
+    minSeparation = 8,
+    breakoutBufferPct = 1,
+    currentMaxBars = 3,
+    currentMaxProgress = 1,
+  } = {}
+) {
+  const none = { state: "false", match: false, breakout: false, barsSinceBreakout: null };
+  const n = rows.length;
+  if (n < 30) return none;
+
+  const win = rows.slice(Math.max(0, n - window));
+  const m = win.length;
+
+  // Swing highs: local maxima of `high` within ±swingK bars.
+  const highs = [];
+  for (let i = swingK; i < m - swingK; i++) {
+    let isHigh = true;
+    for (let j = i - swingK; j <= i + swingK; j++) {
+      if (win[j].high > win[i].high) {
+        isHigh = false;
+        break;
+      }
+    }
+    if (isHigh) highs.push(i);
+  }
+  if (highs.length < 2) return none;
+
+  // Most recent valid pair: latest second-high first, earliest matching first-high.
+  let best = null;
+  for (let b = highs.length - 1; b >= 1 && !best; b--) {
+    for (let a = b - 1; a >= 0; a--) {
+      const iA = highs[a];
+      const iB = highs[b];
+      if (iB - iA < minSeparation) continue;
+      const highA = win[iA].high;
+      const highB = win[iB].high;
+      const top = Math.max(highA, highB);
+      if ((Math.abs(highA - highB) / top) * 100 > similarPct) continue;
+
+      let neck = Infinity;
+      for (let k = iA; k <= iB; k++) if (win[k].low < neck) neck = win[k].low;
+      if (((top - neck) / neck) * 100 < minDepthPct) continue;
+
+      best = { iA, iB, top, neck };
+      break;
+    }
+  }
+  if (!best) return none;
+
+  const price = win[m - 1].close;
+  const thresh = best.neck * (1 + breakoutBufferPct / 100);
+  const match = price <= thresh;
+
+  // How long we've held below the neckline: walk back over the trailing run of
+  // closes that are still below it. 0 = the neckline was broken today.
+  let runBelow = 0;
+  for (let i = m - 1; i >= 0 && win[i].close <= thresh; i--) runBelow++;
+  const barsSinceBreakout = match ? Math.max(0, runBelow - 1) : null;
+
+  // Progress along the measured move (0 at the neckline, 1 at the target).
+  const depth = best.top - best.neck;
+  const progressBelowNeck = depth > 0 ? (best.neck - price) / depth : 0;
+
+  // "current" = we're on the last leg now: just broke the neckline and not
+  // yet run away toward the target. Anything else that formed is "occurred".
+  let state = "false";
+  if (match) {
+    const fresh = barsSinceBreakout <= currentMaxBars && progressBelowNeck <= currentMaxProgress;
+    state = fresh ? "current" : "occurred";
+  }
+
+  return {
+    state,
+    match,
+    breakout: price < best.neck,
+    barsSinceBreakout,
+    highPrice: r2(best.top),
+    neckline: r2(best.neck),
+    // Classic measured-move target (informational).
+    target: r2(best.neck - (best.top - best.neck)),
+    high1Time: win[best.iA].time,
+    high2Time: win[best.iB].time,
+  };
+}
+
 export function isUpDay(rows, i) {
   return i >= 1 && rows[i].close > rows[i - 1].close;
 }

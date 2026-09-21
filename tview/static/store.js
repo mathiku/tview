@@ -7,6 +7,8 @@
   const FILTERS_KEY = "tview:filters";
   const DIRECTION_KEY = "tview:direction";
   const SIMPLE_KEY = "tview:simple";
+  const HIDDEN_SIGNALS_KEY = "tview:hiddenSignals";
+  const HIDDEN_COLUMNS_KEY = "tview:hiddenColumns";
 
   function readJSON(key, fallback) {
     try {
@@ -81,6 +83,59 @@
     setSimple(on) {
       writeJSON(SIMPLE_KEY, !!on);
       return !!on;
+    },
+
+    // Hidden signals — array of signal class strings (e.g. "pullback", "near-100").
+    getHiddenSignals() {
+      return readJSON(HIDDEN_SIGNALS_KEY, []);
+    },
+    setHiddenSignals(list) {
+      writeJSON(HIDDEN_SIGNALS_KEY, list);
+      return list;
+    },
+    isSignalHidden(signalClass) {
+      const hidden = this.getHiddenSignals();
+      return hidden.includes(signalClass);
+    },
+    hideSignal(signalClass) {
+      const hidden = this.getHiddenSignals();
+      if (!hidden.includes(signalClass)) {
+        hidden.push(signalClass);
+        this.setHiddenSignals(hidden);
+      }
+      return hidden;
+    },
+    unhideSignal(signalClass) {
+      const hidden = this.getHiddenSignals();
+      const filtered = hidden.filter((s) => s !== signalClass);
+      this.setHiddenSignals(filtered);
+      return filtered;
+    },
+    clearHiddenSignals() {
+      this.setHiddenSignals([]);
+    },
+
+    // Hidden columns — array of column identifiers.
+    getHiddenColumns() {
+      return readJSON(HIDDEN_COLUMNS_KEY, []);
+    },
+    setHiddenColumns(list) {
+      writeJSON(HIDDEN_COLUMNS_KEY, list);
+      return list;
+    },
+    isColumnHidden(columnId) {
+      const hidden = this.getHiddenColumns();
+      return hidden.includes(columnId);
+    },
+    toggleColumn(columnId) {
+      const hidden = this.getHiddenColumns();
+      if (hidden.includes(columnId)) {
+        this.setHiddenColumns(hidden.filter((c) => c !== columnId));
+      } else {
+        hidden.push(columnId);
+        this.setHiddenColumns(hidden);
+      }
+      return hidden;
     },
   };
 

@@ -5,6 +5,7 @@ import {
   patternLabel,
   shortPatternLabel,
   detectDoubleBottom,
+  detectDoubleTop,
 } from "./patterns.js";
 import {
   BIG_STOCKS,
@@ -585,6 +586,7 @@ export function scoreRallyShort(dailyRows, comparison, opts = {}) {
 
   const watch = trendOk && at100Sma && wasLowerRecently && filtersPass;
   const patterns = analyzeShortPatterns(dailyRows, { at100Sma });
+  const doubleTop = detectDoubleTop(dailyData);
   const levels = suggestShortLevels(dailyData, indicators);
 
   let score = 0;
@@ -643,6 +645,7 @@ export function scoreRallyShort(dailyRows, comparison, opts = {}) {
     },
     indicators,
     patterns,
+    doubleTop,
     levels,
   };
 }

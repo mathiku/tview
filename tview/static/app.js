@@ -135,42 +135,71 @@ function createChart(containerId) {
     lastValueVisible: false,
   });
 
-  // Overlay for the double-bottom bounding box — a positioned DOM element the
-  // lightweight-charts canvas can't draw natively (v4 has no rectangle shape).
+  // Overlay for the double-bottom and double-top bounding boxes — positioned DOM
+  // elements the lightweight-charts canvas can't draw natively (v4 has no rectangle shape).
   container.style.position = "relative";
   const box = document.createElement("div");
   box.className = "signal-box";
   box.style.display = "none";
   container.appendChild(box);
 
-  const s = { chart, candles, volume, ema10, sma100, sma200, container, box };
+  const boxTop = document.createElement("div");
+  boxTop.className = "signal-box-top";
+  boxTop.style.display = "none";
+  container.appendChild(boxTop);
+
+  const s = { chart, candles, volume, ema10, sma100, sma200, container, box, boxTop };
   s.priceLines = [];
   s.boxData = null;
+  s.boxTopData = null;
 
-  // Re-place the box in pixel space whenever the visible range or size changes.
+  // Re-place the boxes in pixel space whenever the visible range or size changes.
   s.reposition = () => {
     const d = s.boxData;
     if (!d) {
       box.style.display = "none";
-      return;
+    } else {
+      const ts = chart.timeScale();
+      const x1 = ts.timeToCoordinate(d.low1Time);
+      const x2 = ts.timeToCoordinate(d.low2Time);
+      const yTop = candles.priceToCoordinate(d.top);
+      const yBottom = candles.priceToCoordinate(d.bottom);
+      if (x1 == null || x2 == null || yTop == null || yBottom == null) {
+        box.style.display = "none";
+      } else {
+        const left = Math.min(x1, x2);
+        const top = Math.min(yTop, yBottom);
+        box.classList.toggle("occurred", !d.current);
+        box.style.display = "block";
+        box.style.left = `${left}px`;
+        box.style.width = `${Math.max(Math.abs(x2 - x1), 2)}px`;
+        box.style.top = `${top}px`;
+        box.style.height = `${Math.max(Math.abs(yBottom - yTop), 2)}px`;
+      }
     }
-    const ts = chart.timeScale();
-    const x1 = ts.timeToCoordinate(d.low1Time);
-    const x2 = ts.timeToCoordinate(d.low2Time);
-    const yTop = candles.priceToCoordinate(d.top);
-    const yBottom = candles.priceToCoordinate(d.bottom);
-    if (x1 == null || x2 == null || yTop == null || yBottom == null) {
-      box.style.display = "none";
-      return;
+
+    const dt = s.boxTopData;
+    if (!dt) {
+      boxTop.style.display = "none";
+    } else {
+      const ts = chart.timeScale();
+      const x1 = ts.timeToCoordinate(dt.high1Time);
+      const x2 = ts.timeToCoordinate(dt.high2Time);
+      const yTop = candles.priceToCoordinate(dt.top);
+      const yBottom = candles.priceToCoordinate(dt.bottom);
+      if (x1 == null || x2 == null || yTop == null || yBottom == null) {
+        boxTop.style.display = "none";
+      } else {
+        const left = Math.min(x1, x2);
+        const top = Math.min(yTop, yBottom);
+        boxTop.classList.toggle("occurred", !dt.current);
+        boxTop.style.display = "block";
+        boxTop.style.left = `${left}px`;
+        boxTop.style.width = `${Math.max(Math.abs(x2 - x1), 2)}px`;
+        boxTop.style.top = `${top}px`;
+        boxTop.style.height = `${Math.max(Math.abs(yBottom - yTop), 2)}px`;
+      }
     }
-    const left = Math.min(x1, x2);
-    const top = Math.min(yTop, yBottom);
-    box.classList.toggle("occurred", !d.current);
-    box.style.display = "block";
-    box.style.left = `${left}px`;
-    box.style.width = `${Math.max(Math.abs(x2 - x1), 2)}px`;
-    box.style.top = `${top}px`;
-    box.style.height = `${Math.max(Math.abs(yBottom - yTop), 2)}px`;
   };
   chart.timeScale().subscribeVisibleLogicalRangeChange(s.reposition);
 
@@ -200,10 +229,12 @@ function applyDefaultVisibleRange(key, rows, signal) {
   const firstTime = rows[0].time;
   let from = lastTime - DEFAULT_RANGES[key];
 
-  // Pull the daily view back far enough to frame a double bottom that formed
-  // before the default window — otherwise its box would sit off-screen.
+  // Pull the daily view back far enough to frame a double bottom or double top
+  // that formed before the default window — otherwise its box would sit off-screen.
   const db = key === "1d" ? signal?.doubleBottom : null;
+  const dt = key === "1d" ? signal?.doubleTop : null;
   if (db?.match) from = Math.min(from, db.low1Time - 12 * SEC_DAY);
+  if (dt?.match) from = Math.min(from, dt.high1Time - 12 * SEC_DAY);
 
   if (from < firstTime) from = firstTime;
 
@@ -213,8 +244,10 @@ function applyDefaultVisibleRange(key, rows, signal) {
 const HAMMER_HL = "#fbbf24";
 const DB_HL = "#22d3ee";
 const DB_STALE = "#5b7089";
+const DT_HL = "#f472b6";
+const DT_STALE = "#78716c";
 
-// Draw the daily-bar signals (hammer, double bottom, trade levels) onto a chart.
+// Draw the daily-bar signals (hammer, double bottom, double top, trade levels) onto a chart.
 function annotateSignals(key, rows, signal) {
   const s = series[key];
   s.priceLines.forEach((pl) => s.candles.removePriceLine(pl));
@@ -222,12 +255,14 @@ function annotateSignals(key, rows, signal) {
 
   if (key !== "1d") {
     s.boxData = null;
+    s.boxTopData = null;
     s.candles.setMarkers([]);
     s.reposition();
     return;
   }
 
   const db = signal?.doubleBottom;
+  const dt = signal?.doubleTop;
   const lv = signal?.levels;
   const markers = [];
 
@@ -278,6 +313,45 @@ function annotateSignals(key, rows, signal) {
     };
   } else {
     s.boxData = null;
+  }
+
+  // Draw the box for a live "current" 2T (bright) or a past "occurred" one
+  // (dimmed + labelled with how long ago it broke down). Skip when there's none.
+  const dtState = dt?.state ?? "false";
+  if (dtState === "current" || dtState === "occurred") {
+    const current = dtState === "current";
+    const color = current ? DT_HL : DT_STALE;
+    const ago =
+      dt.barsSinceBreakout == null
+        ? ""
+        : ` · ${dt.barsSinceBreakout === 0 ? "today" : dt.barsSinceBreakout + "d ago"}`;
+    markers.push({ time: dt.high1Time, position: "aboveBar", color, shape: "circle", text: "1" });
+    markers.push({
+      time: dt.high2Time,
+      position: "aboveBar",
+      color,
+      shape: "circle",
+      text: current ? "2 · 2T now" : `2 · 2T${ago}`,
+    });
+    s.priceLines.push(
+      s.candles.createPriceLine({
+        price: dt.neckline,
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: "neckline",
+      })
+    );
+    s.boxTopData = {
+      high1Time: dt.high1Time,
+      high2Time: dt.high2Time,
+      top: dt.highPrice,
+      bottom: dt.neckline,
+      current,
+    };
+  } else {
+    s.boxTopData = null;
   }
 
   if (lv) {
@@ -463,6 +537,7 @@ function renderSetup(signal) {
   if (!box) return;
   const lv = signal?.levels;
   const db = signal?.doubleBottom;
+  const dt = signal?.doubleTop;
   const parts = [];
   if (lv) {
     parts.push(setupItem("Entry", `$${lv.entry.toFixed(2)}`));
@@ -484,6 +559,22 @@ function renderSetup(signal) {
     dbText = `Broke out${ago} · neckline $${db.neckline}`;
   }
   parts.push(setupItem("Double bottom", dbText, dbCls));
+
+  const dtState = dt?.state ?? "false";
+  let dtText = "None";
+  let dtCls = "";
+  if (dtState === "current") {
+    dtText = `On the last leg · neckline $${dt.neckline}`;
+    dtCls = "stop";
+  } else if (dtState === "occurred") {
+    const ago =
+      dt.barsSinceBreakout == null
+        ? ""
+        : ` ${dt.barsSinceBreakout === 0 ? "today" : dt.barsSinceBreakout + " bars ago"}`;
+    dtText = `Broke down${ago} · neckline $${dt.neckline}`;
+  }
+  parts.push(setupItem("Double top", dtText, dtCls));
+
   box.innerHTML = parts.join("");
 }
 
