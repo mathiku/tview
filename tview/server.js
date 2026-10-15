@@ -8,6 +8,7 @@ import {
   buildScanUniverse,
   clearOverviewCache,
   fetchSymbolMeta,
+  getLiveTracker,
   getOverview,
   getPayload,
   getStocksForPicker,
@@ -50,6 +51,10 @@ app.get("/backtest", (_req, res) => {
 
 app.get("/bestpick", (_req, res) => {
   res.sendFile(path.join(__dirname, "static", "bestpick.html"));
+});
+
+app.get("/live", (_req, res) => {
+  res.sendFile(path.join(__dirname, "static", "live.html"));
 });
 
 app.get("/api/stocks", async (_req, res) => {
@@ -182,6 +187,15 @@ app.get("/api/translate-strategy", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/live-tracker", async (req, res) => {
+  try {
+    res.json(await getLiveTracker());
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
   }
 });
 

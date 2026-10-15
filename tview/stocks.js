@@ -1057,3 +1057,139 @@ export function resolveSymbol(raw) {
   if (/^[A-Z0-9.\-]{1,10}$/.test(symbol)) return symbol;
   return DEFAULT_SYMBOL;
 }
+
+/**
+ * Fetch 5-minute intraday bars for the last trading day. Returns an array of
+ * { time, open, high, low, close, volume } or throws on error.
+ */
+export async function fetchIntradayBars(symbol) {
+  // Yahoo Finance intraday endpoint: last 5 days of 5-minute bars
+  const period2 = Math.floor(Date.now() / 1000);
+  const period1 = period2 - 5 * 86400;
+  
+  const url =
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
+    `?interval=5m&period1=${period1}&period2=${period2}&includePrePost=false`;
+
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!res.ok) throw new Error(`Yahoo Finance HTTP ${res.status}`);
+
+  const json = await res.json();
+  const result = json.chart?.result?.[0];
+  if (!result) throw new Error(`No intraday data for ${symbol}`);
+
+  const timestamps = result.timestamp || [];
+  const quote = result.indicators?.quote?.[0] || {};
+  const opens = quote.open || [];
+  const highs = quote.high || [];
+  const lows = quote.low || [];
+  const closes = quote.close || [];
+  const volumes = quote.volume || [];
+
+  const rows = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const close = closes[i];
+    const open = opens[i];
+    const high = highs[i];
+    const low = lows[i];
+    if (close == null || Number.isNaN(close)) continue;
+    if (open == null || high == null || low == null) continue;
+    rows.push({
+      time: timestamps[i],
+      open: round2(open),
+      high: round2(high),
+      low: round2(low),
+      close: round2(close),
+      volume: volumes[i] ?? 0,
+    });
+  }
+  return rows;
+}
+
+/**
+ * Build live tracker payload: stocks with Trend OK (long side only), sorted by
+ * proximity to their daily 200 SMA. Returns live price from 5-min bars, distance
+ * to daily 200 SMA, and approach direction.
+ */
+export async function getLiveTracker() {
+  const session = sessionKey();
+  const universe = await getActiveUniverse();
+  
+  // Step 1: Filter for Trend OK stocks using daily data
+  const trendOkStocks = [];
+  for (const stock of universe) {
+    try {
+      const { signal } = await loadStockAnalysis(stock.symbol, session, "long", "simple");
+      // Use simple view's trendOk check (weekly & monthly above 200 SMA, or 5+/6 bullish)
+      if (signal?.checks?.trendOk) {
+        trendOkStocks.push(stock);
+      }
+    } catch (err) {
+      console.error(`Failed to analyze ${stock.symbol}:`, err.message);
+    }
+  }
+
+  // Step 2: Fetch intraday bars for Trend OK stocks (batched with throttling)
+  const INTRADAY_CONCURRENCY = 3; // Conservative to respect rate limits
+  const liveData = await mapPool(trendOkStocks, INTRADAY_CONCURRENCY, async (stock) => {
+    try {
+      const intradayBars = await fetchIntradayBars(stock.symbol);
+      if (!intradayBars.length) return null;
+
+      // Latest 5-min bar
+      const latestBar = intradayBars[intradayBars.length - 1];
+      const livePrice = latestBar.close;
+      const barTime = latestBar.time;
+
+      // Get daily 200 SMA from cached analysis
+      const cached = cache.get(stock.symbol);
+      const comparison = cached?.comparison;
+      const daily200Sma = comparison?.["1d"]?.sma200;
+
+      if (daily200Sma == null || daily200Sma === 0) return null;
+
+      const distancePct = pctVs(livePrice, daily200Sma);
+      const distanceAbs = Math.abs(distancePct ?? 0);
+
+      // Approach direction: compare latest bar to a few bars ago
+      let direction = "neutral";
+      if (intradayBars.length >= 6) {
+        const recentBars = intradayBars.slice(-6);
+        const closes = recentBars.map((b) => b.close);
+        const trend = closes[closes.length - 1] - closes[0];
+        if (trend < 0) direction = "falling";
+        else if (trend > 0) direction = "rising";
+      }
+
+      return {
+        symbol: stock.symbol,
+        name: stock.name,
+        livePrice: round2(livePrice),
+        daily200Sma: round2(daily200Sma),
+        distancePct: distancePct != null ? round2(distancePct) : null,
+        distanceAbs,
+        direction,
+        barTime,
+        barTimeISO: new Date(barTime * 1000).toISOString(),
+      };
+    } catch (err) {
+      console.error(`Failed to fetch intraday for ${stock.symbol}:`, err.message);
+      return null;
+    }
+  });
+
+  // Step 3: Sort by distance (closest first)
+  const filtered = liveData.filter(Boolean);
+  filtered.sort((a, b) => a.distanceAbs - b.distanceAbs);
+
+  return {
+    updated_at: new Date().toISOString(),
+    asOf: session,
+    total: filtered.length,
+    candidates: trendOkStocks.length,
+    scanned: universe.length,
+    stocks: filtered,
+  };
+}
