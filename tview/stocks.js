@@ -1133,7 +1133,17 @@ export async function getLiveTracker() {
 
   // Step 2: Fetch intraday bars for Trend OK stocks (batched with throttling)
   const INTRADAY_CONCURRENCY = 3; // Conservative to respect rate limits
-  const liveData = await mapPool(trendOkStocks, INTRADAY_CONCURRENCY, async (stock) => {
+  const BATCH_DELAY_MS = 200; // Small delay between batches
+  
+  let batchCount = 0;
+  const liveData = await mapPool(trendOkStocks, INTRADAY_CONCURRENCY, async (stock, idx) => {
+    // Add a small delay between batches to be gentle on Yahoo
+    const currentBatch = Math.floor(idx / INTRADAY_CONCURRENCY);
+    if (currentBatch > batchCount) {
+      batchCount = currentBatch;
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+    }
+    
     try {
       const intradayBars = await fetchIntradayBars(stock.symbol);
       if (!intradayBars.length) return null;
