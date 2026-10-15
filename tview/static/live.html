@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Tracker · Stock Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Live Bounce Tracker</h1>
+      <p class="subtitle">Real-time tracking of Trend OK stocks approaching their daily 200 SMA</p>
+    </div>
+    <div class="meta">
+      <nav class="top-nav">
+        <a href="/" class="nav-link">Overview</a>
+        <a href="/stock" class="nav-link">Charts</a>
+        <a href="/watchlist" class="nav-link">Watchlist</a>
+        <a href="/bestpick" class="nav-link">Best Pick</a>
+        <a href="/backtest" class="nav-link">Backtest</a>
+        <a href="/live" class="nav-link active">Live</a>
+      </nav>
+      <div class="market-status-container">
+        <span id="market-status" class="badge">Checking…</span>
+      </div>
+      <span id="last-updated">Loading…</span>
+      <span id="refresh-status" class="badge">Connecting</span>
+    </div>
+  </header>
+
+  <main class="live-main">
+    <section class="panel live-panel">
+      <div class="panel-head">
+        <h2 id="panel-title">Live Bounce Candidates</h2>
+        <div class="live-stats">
+          <span id="live-stats">Loading…</span>
+        </div>
+      </div>
+      <div class="table-wrap live-wrap">
+        <table class="live-table">
+          <thead>
+            <tr class="head-row">
+              <th class="col-stock">Stock</th>
+              <th>Live Price</th>
+              <th>Daily 200 SMA</th>
+              <th>Distance</th>
+              <th>Approach</th>
+              <th>Latest Bar</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="live-body">
+            <tr><td colspan="7" class="loading">Loading live data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <details class="legend-panel legend-details">
+      <summary>What is the Live Bounce Tracker?</summary>
+      <p>The <strong>Live Bounce Tracker</strong> monitors stocks with healthy uptrends (<strong>Trend OK</strong>) and shows how close they are to bouncing on their <strong>daily 200 SMA</strong> using real-time 5-minute price data.</p>
+      
+      <h3>What does "Trend OK" mean?</h3>
+      <p>A stock qualifies as Trend OK when:</p>
+      <ul class="check-legend">
+        <li><span class="check ok">✓</span> <strong>Weekly &amp; monthly are above the 200 SMA</strong>, OR</li>
+        <li><span class="check ok">✓</span> <strong>5 or more of the 6 SMAs are bullish</strong> (daily/weekly/monthly × 100/200 SMA)</li>
+      </ul>
+      
+      <h3>How is distance calculated?</h3>
+      <p><strong>Live Price</strong> is the latest close from 5-minute intraday bars. <strong>Daily 200 SMA</strong> is computed from daily bars (not intraday). <strong>Distance</strong> shows how far the live price sits above (+) or below (−) the daily 200 SMA as a percentage.</p>
+      <p>Stocks are sorted by <strong>absolute distance</strong> — closest first. A stock trading <em>at</em> or just below the 200 SMA (e.g. −0.5%) is a potential bounce candidate.</p>
+      
+      <h3>Approach direction</h3>
+      <ul class="check-legend">
+        <li><span class="approach-arrow falling">↓</span> <strong>Falling</strong> — price is dropping toward the 200 SMA (recent 5-min bars are lower)</li>
+        <li><span class="approach-arrow rising">↑</span> <strong>Rising</strong> — price is bouncing away from the 200 SMA (recent 5-min bars are higher)</li>
+        <li><span class="approach-arrow neutral">→</span> <strong>Neutral</strong> — sideways or not enough bars to judge</li>
+      </ul>
+      
+      <h3>Data freshness</h3>
+      <p>Intraday bars are delayed by Yahoo Finance (typically 15 minutes for free data). The <strong>Latest Bar</strong> column shows the timestamp of the most recent 5-minute bar received. Outside US market hours (9:30 AM – 4:00 PM ET), the page will show the last bar from the previous trading session.</p>
+      
+      <h3>Auto-refresh</h3>
+      <p>The page refreshes every 2 minutes while you're viewing it. Since Render's free plan sleeps after inactivity, this tracker only updates while the page is open.</p>
+    </details>
+  </main>
+
+  <script src="/static/store.js"></script>
+  <script src="/static/live.js"></script>
+</body>
+</html>
